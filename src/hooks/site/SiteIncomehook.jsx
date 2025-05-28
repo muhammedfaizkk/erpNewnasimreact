@@ -2,144 +2,156 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import axiosInstance from '../api';
 import axios from 'axios';
 
-export const useFetchSiteIncome = (siteId, filters = {}, page = 1, limit = 10) => {
-  const [incomes, setIncomes] = useState([]);
-  const [currentMonthIncomes, setCurrentMonthIncomes] = useState([]);
-  const [totalCurrentMonthIncomes, setTotalCurrentMonthIncomes] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(page);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [currentMonthTotalAmount, setCurrentMonthTotalAmount] = useState(0);
+export const useFetchSiteIncome = (siteId) => {
+    const [incomes, setIncomes] = useState([]);
+    const [totalAmount, setTotalAmount] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const cancelRef = useRef(null);
+
+    const fetchSiteIncome = async () => {
+        if (!siteId) return;
+
+        // Cancel previous request if still ongoing
+        if (cancelRef.current) {
+            cancelRef.current.cancel('Cancelled due to new request.');
+        }
+
+        cancelRef.current = axios.CancelToken.source();
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response = await axiosInstance.get(`/getAllSiteIncome/${siteId}`, {
+                cancelToken: cancelRef.current.token,
+            });
+
+            if (response.data.success) {
+                setIncomes(response.data.data.incomes || []);
+                setTotalAmount(response.data.data.totals?.allTimeTotal || 0);
+            } else {
+                setError(response.data.message || 'Failed to fetch site income');
+            }
+        } catch (err) {
+            if (!axios.isCancel(err)) {
+                console.error('Error fetching site income:', err);
+                setError(err.response?.data?.message || 'Failed to fetch site income');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (siteId) {
+            fetchSiteIncome();
+        }
+
+        return () => {
+            if (cancelRef.current) {
+                cancelRef.current.cancel('Component unmounted.');
+            }
+        };
+    }, [siteId]);
+
+    return { incomes, totalAmount, loading, error, refetch: fetchSiteIncome };
+};
+
+
+export const useAddSiteIncome = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const cancelTokenRef = useRef(null);
+  const [income, setIncome] = useState(null);
+  const [success, setSuccess] = useState(false);
 
-  const fetchSiteIncome = useCallback(async () => {
-    if (!siteId) return;
+  const addIncome = async (siteId, incomeData) => {
+    if (!siteId) {
+      setError({ message: 'Site ID is required' });
+      return null;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
 
     try {
-      setLoading(true);
-      setError(null);
-
-      if (cancelTokenRef.current) {
-        cancelTokenRef.current.cancel('New request initiated');
-      }
-
-      const source = axios.CancelToken.source();
-      cancelTokenRef.current = source;
-
-      const res = await axiosInstance.get(`/getAllSiteIncome/${siteId}`, {
-        cancelToken: source.token
-      });
-
-      const data = res.data;
-      if (data.success) {
-        // ✅ Use the returned income data
-        setIncomes(data.data.incomes || []);
-        setTotalAmount(data.data.totals?.allTimeTotal || 0);
+      const res = await axiosInstance.post(`/addSiteIncome/${siteId}`, incomeData);
+      if (res.data.success) {
+        setIncome(res.data.income);
+        setSuccess(true);
+        return res.data.income;
       } else {
-        setError({ message: data.message || 'Failed to fetch incomes' });
+        setError({ message: res.data.message || 'Failed to add income' });
+        return null;
       }
     } catch (err) {
-      if (axios.isCancel(err)) {
-        console.log('Request canceled:', err.message);
-      } else {
-        setError({
-          message: 'Failed to fetch incomes',
-          details: err.response?.data?.message || err.message,
-        });
-      }
+      setError({
+        message: 'Failed to add income',
+        details: err.response?.data?.message || err.message,
+      });
+      return null;
     } finally {
       setLoading(false);
-      cancelTokenRef.current = null;
     }
-  }, [siteId]);
-
-
-  useEffect(() => {
-    fetchSiteIncome();
-
-    // Cleanup function to cancel request on unmount
-    return () => {
-      if (cancelTokenRef.current) {
-        cancelTokenRef.current.cancel('Component unmounted');
-      }
-    };
-  }, [fetchSiteIncome]);
-
-  // Update currentPage when page prop changes
-  useEffect(() => {
-    if (page !== currentPage) {
-      setCurrentPage(page);
-    }
-  }, [page]);
-
-  const setPage = useCallback((newPage) => {
-    setCurrentPage(newPage);
-  }, []);
+  };
 
   const reset = () => {
-    setIncomes([]);
-    setCurrentMonthIncomes([]);
-    setTotalCurrentMonthIncomes(0);
-    setTotalPages(0);
-    setCurrentPage(1);
-    setTotalAmount(0);
-    setCurrentMonthTotalAmount(0);
     setError(null);
+    setSuccess(false);
+    setIncome(null);
   };
 
   return {
-    incomes,
-    currentMonthIncomes,
-    totalCurrentMonthIncomes,
-    totalPages,
-    currentPage,
-    totalAmount,
-    currentMonthTotalAmount,
+    addIncome,
     loading,
     error,
-    refetch: fetchSiteIncome,
-    setPage,
+    income,
+    success,
     reset,
   };
 };
 
-export const useAddSiteIncome = () => {
-  const [loading, setLoading] = useState(false);
-
-  const addIncome = async ({ siteId, data }) => {
-
-    setLoading(true);
-    try {
-      const res = await axiosInstance.post(`/addSiteIncome/${siteId}`, data);
-      return res.data;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { mutateAsync: addIncome, isLoading: loading };
-};
-
 export const useUpdateSiteIncome = () => {
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const updateIncome = async ({ id, data }) => {
-    setLoading(true);
+  const updateIncome = async (id, data) => {
+    if (!id) {
+      setError({ message: 'Income ID is required' });
+      return false;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
     try {
       const res = await axiosInstance.put(`/updateSiteIncome/${id}`, data);
-      return res.data;
+      if (res.data.success) {
+        return true;
+      } else {
+        setError({ message: res.data.message || 'Failed to update income' });
+        return false;
+      }
+    } catch (err) {
+      setError({
+        message: 'Failed to update income',
+        details: err.response?.data?.message || err.message,
+      });
+      return false;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  return { mutateAsync: updateIncome, isLoading: loading };
+  const reset = () => {
+    setError(null);
+  };
+
+  return { updateIncome, isLoading, error, reset };
 };
 
 export const useDeleteSiteIncome = () => {
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
@@ -149,10 +161,9 @@ export const useDeleteSiteIncome = () => {
       return false;
     }
 
-    console.log('incomeId',incomeId);
-    
+    console.log('Deleting income with ID:', incomeId);
 
-    setLoading(true);
+    setIsLoading(true);
     setError(null);
     setSuccess(false);
 
@@ -172,7 +183,7 @@ export const useDeleteSiteIncome = () => {
       });
       return false;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -181,5 +192,5 @@ export const useDeleteSiteIncome = () => {
     setSuccess(false);
   };
 
-  return { deleteIncome, loading, error, success, reset };
+  return { deleteIncome, isLoading, error, success, reset };
 };

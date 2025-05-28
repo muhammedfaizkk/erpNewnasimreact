@@ -4,97 +4,74 @@ import axiosInstance from '../api';
 
 
 
-export const useFetchSiteExpense = (siteId, page = 1, limit = 10) => {
-  const [currentPage, setCurrentPage] = useState(page);
-  const [data, setData] = useState({
-    expenses: [],
-    currentMonthExpenses: [],
-    totalPages: 0,
-    totalAmount: 0,
-    currentMonthTotalAmount: 0,
-    loading: false,
-    error: null,
-  });
+export const useFetchSiteExpense = (siteId) => {
+  const [expenses, setExpenses] = useState([]);
+  const [currentMonthExpenses, setCurrentMonthExpenses] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0);
+  const [currentMonthTotalAmount, setCurrentMonthTotalAmount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const cancelTokenRef = useRef(null);
+  const cancelRef = useRef(null);
 
-  const fetchSiteExpense = useCallback(async () => {
+  const fetchSiteExpense = async () => {
     if (!siteId) return;
 
-    setData(prev => ({ ...prev, loading: true, error: null }));
-
-    if (cancelTokenRef.current) {
-      cancelTokenRef.current.cancel('New request initiated');
+    // Cancel previous request if ongoing
+    if (cancelRef.current) {
+      cancelRef.current.cancel('Cancelled due to new request.');
     }
 
-    const source = axios.CancelToken.source();
-    cancelTokenRef.current = source;
+    cancelRef.current = axios.CancelToken.source();
+    setLoading(true);
+    setError(null);
 
     try {
-      const query = new URLSearchParams({ page: currentPage, limit });
-      const { data } = await axiosInstance.get(`/getAllsiteex/${siteId}?${query}`, {
-        cancelToken: source.token,
+      const response = await axiosInstance.get(`/getAllsiteex/${siteId}`, {
+        cancelToken: cancelRef.current.token,
       });
 
-      if (data.success) {
-        setData(prev => ({
-          ...prev,
-          expenses: data.expenses || [],
-          currentMonthExpenses: data.currentMonthExpenses || [],
-          totalPages: data.totalPages || 0,
-          totalAmount: data.totalAmount || 0,
-          currentMonthTotalAmount: data.currentMonthTotalAmount || 0,
-          loading: false
-        }));
+      if (response.data.success) {
+        setExpenses(response.data.expenses || []);
+        setCurrentMonthExpenses(response.data.currentMonthExpenses || []);
+        setTotalPages(response.data.totalPages || 0);
+        setTotalAmount(response.data.totalAmount || 0);
+        setCurrentMonthTotalAmount(response.data.currentMonthTotalAmount || 0);
       } else {
-        throw new Error(data.message || 'Failed to fetch expenses');
+        setError(response.data.message || 'Failed to fetch site expenses');
       }
     } catch (err) {
       if (!axios.isCancel(err)) {
-        setData(prev => ({
-          ...prev,
-          loading: false,
-          error: {
-            message: 'Failed to fetch expenses',
-            details: err.response?.data?.message || err.message,
-          },
-        }));
+        console.error('Error fetching site expenses:', err);
+        setError(err.response?.data?.message || 'Failed to fetch site expenses');
       }
     } finally {
-      cancelTokenRef.current = null;
+      setLoading(false);
     }
-  }, [siteId, currentPage, limit]);
-
-  useEffect(() => {
-    fetchSiteExpense();
-    return () => cancelTokenRef.current?.cancel('Component unmounted');
-  }, [fetchSiteExpense]);
-
-  useEffect(() => {
-    setCurrentPage(page);
-  }, [page]);
-
-  const setPage = useCallback((p) => setCurrentPage(p), []);
-
-  const reset = () => {
-    setData({
-      expenses: [],
-      currentMonthExpenses: [],
-      totalPages: 0,
-      totalAmount: 0,
-      currentMonthTotalAmount: 0,
-      loading: false,
-      error: null,
-    });
-    setCurrentPage(1);
   };
 
+  useEffect(() => {
+    if (siteId) {
+      fetchSiteExpense();
+    }
+
+    return () => {
+      if (cancelRef.current) {
+        cancelRef.current.cancel('Component unmounted.');
+      }
+    };
+  }, [siteId]);
+
   return {
-    ...data,
-    currentPage,
+    expenses,
+    currentMonthExpenses,
+    totalPages,
+    totalAmount,
+    currentMonthTotalAmount,
+    loading,
+    error,
     refetch: fetchSiteExpense,
-    setPage,
-    reset,
   };
 };
 

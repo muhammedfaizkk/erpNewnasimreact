@@ -17,6 +17,8 @@ const Sites = () => {
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const [isSiteModalOpen, setIsSiteModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -89,32 +91,25 @@ const Sites = () => {
   }, []);
 
   // Load sites function with better error handling
-  const loadSites = useCallback(async (filterStatus = statusFilter) => {
+  const loadSites = useCallback(async () => {
     try {
-      await getAllSites(filterStatus === 'all' ? undefined : filterStatus);
+      await getAllSites(); // fetch all
     } catch (err) {
       console.error('Error loading sites:', err);
       toast.error('Failed to load sites');
     }
-  }, [getAllSites, statusFilter]);
+  }, [getAllSites]);
   const handleView = useCallback((site) => {
     navigate(`/sitedetailview/${site.id || site._id}`);
   }, [navigate]);
   useEffect(() => {
     loadSites();
-  }, []); // Only run on mount
+  }, []);
 
   // Handle status filter changes without full reload
-  const handleStatusFilterChange = useCallback(async (status) => {
+  const handleStatusFilterChange = useCallback((status) => {
     setStatusFilter(status);
-    // Load sites with new filter
-    try {
-      await getAllSites(status === 'all' ? undefined : status);
-    } catch (err) {
-      console.error('Error filtering sites:', err);
-      toast.error('Failed to filter sites');
-    }
-  }, [getAllSites]);
+  }, []);
 
   const handleSearch = useCallback((term) => {
     setSearchTerm(term.toLowerCase());
@@ -129,7 +124,7 @@ const Sites = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // FIXED: Memoized filtered sites to prevent unnecessary filtering
+  // Memoized filtered sites to prevent unnecessary filtering
   const filteredSites = useMemo(() => {
     let filtered = sites.filter(site => site.type === 'Site');
 
@@ -170,6 +165,20 @@ const Sites = () => {
 
     return filtered;
   }, [sites, statusFilter, searchTerm]);
+
+  // Paginate filtered sites
+  const paginatedSites = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredSites.slice(start, end);
+  }, [filteredSites, page, pageSize]);
+
+  const totalPages = Math.ceil(filteredSites.length / pageSize);
+
+  // Reset to page 1 if filters change and current page is out of range
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [filteredSites, totalPages]);
 
   // Memoized statistics to prevent unnecessary calculations
   const statistics = useMemo(() => {
@@ -216,7 +225,7 @@ const Sites = () => {
         if (result.success) {
           toast.success('Site deleted successfully');
           // Refresh the current filter view
-          await loadSites(statusFilter);
+          await loadSites();
         } else {
           toast.error(result.message || 'Failed to delete site');
         }
@@ -227,7 +236,7 @@ const Sites = () => {
     }
     setIsConfirmModalOpen(false);
     setCurrentSite(null);
-  }, [currentSite, deleteSite, loadSites, statusFilter]);
+  }, [currentSite, deleteSite, loadSites]);
 
   const handleModalClose = useCallback(() => {
     setIsSiteModalOpen(false);
@@ -265,7 +274,7 @@ const Sites = () => {
       if (result.success) {
         toast.success(`Site ${modalMode === 'add' ? 'added' : 'updated'} successfully`);
         // Refresh the sites list with current filter
-        await loadSites(statusFilter);
+        await loadSites();
         handleModalClose();
       } else {
         toast.error(result.message || `Failed to ${modalMode === 'add' ? 'add' : 'update'} site`);
@@ -274,7 +283,7 @@ const Sites = () => {
       console.error('Submit error:', err);
       toast.error(`Failed to ${modalMode === 'add' ? 'add' : 'update'} site: ${err.message}`);
     }
-  }, [modalMode, addSite, editSite, currentSite, loadSites, statusFilter, handleModalClose]);
+  }, [modalMode, addSite, editSite, currentSite, loadSites, handleModalClose]);
 
 
 
@@ -373,7 +382,7 @@ const Sites = () => {
           <>
             {isMobileView ? (
               <div className="grid grid-cols-1 gap-4 mt-4">
-                {filteredSites.map(site => (
+                {paginatedSites.map(site => (
                   <SiteCard
                     key={site._id || site.id}
                     site={site}
@@ -384,15 +393,14 @@ const Sites = () => {
                     getStatusColor={getStatusColor}
                     getStatusIcon={getStatusIcon}
                     formatDate={formatDate}
-                    
+                    calculateBalance={calculateBalance}
                   />
-
                 ))}
               </div>
             ) : (
               <div className="mt-4 bg-white rounded-lg shadow overflow-hidden">
                 <SiteTable
-                  sites={filteredSites}
+                  sites={paginatedSites}
                   onRowClick={handleView}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
@@ -403,6 +411,37 @@ const Sites = () => {
                   getStatusIcon={getStatusIcon}
                   calculateBalance={calculateBalance}
                 />
+              </div>
+            )}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center space-x-1 my-6">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                  Prev
+                </button>
+                {[...Array(totalPages)].map((_, index) => {
+                  const pageNum = index + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`px-3 py-1 border rounded ${page === pageNum ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
               </div>
             )}
           </>

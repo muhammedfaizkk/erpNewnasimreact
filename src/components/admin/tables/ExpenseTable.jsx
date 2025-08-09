@@ -1,69 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { TrendingDown, Plus } from 'lucide-react';
 import ExpenseForm from '../forms/ExpenseForm';
 import ExpenseList from './ExpenseList';
 import ConfirmationModal from '../../admin/ConfirmationModal';
 import { toast } from 'react-toastify';
+import { useAddSiteExpense, useUpdateSiteExpense, useDeleteSiteExpense } from '../../../hooks/site/SiteExhooks';
 
-import {
-    useFetchSiteExpense,
-    useAddSiteExpense,
-    useUpdateSiteExpense,
-    useDeleteSiteExpense,
-} from '../../../hooks/site/SiteExhooks';
-
-export default function ExpenseTable({ siteId, onDataChange }) {
+export default function ExpenseTable({ data = [], onDataChange, siteId }) {
     const [showForm, setShowForm] = useState(false);
     const [editingExpense, setEditingExpense] = useState(null);
-
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
     const [selectedExpenseId, setSelectedExpenseId] = useState(null);
 
-    const {
-        expenses,
-        loading,
-        error,
-        totalAmount,
-        refetch,
-        reset,
-    } = useFetchSiteExpense(siteId);
-
-    const {
-        addExpense,
-        isLoading: isAdding,
-        error: addError,
-        reset: resetAdd,
-    } = useAddSiteExpense();
-
-    const {
-        updateExpense,
-        isLoading: isUpdating,
-        error: updateError,
-        reset: resetUpdate,
-    } = useUpdateSiteExpense();
-
-    const {
-        deleteExpense,
-        isLoading: isDeleting,
-        error: deleteError,
-        reset: resetDelete,
-    } = useDeleteSiteExpense();
-
-    useEffect(() => {
-        if (!siteId) return;
-
-        const controller = new AbortController();
-        const signal = controller.signal;
-
-        const delayDebounce = setTimeout(() => {
-            refetch({ signal }); // Pass the signal to your fetch function
-        }, 300);
-
-        return () => {
-            clearTimeout(delayDebounce);
-            controller.abort();
-        };
-    }, [siteId]);
+    const { addExpense, loading: isAdding } = useAddSiteExpense();
+    const { updateExpense, loading: isUpdating } = useUpdateSiteExpense();
+    const { deleteExpense, loading: isDeleting } = useDeleteSiteExpense();
 
     const handleDeleteClick = (expenseId) => {
         setSelectedExpenseId(expenseId);
@@ -75,10 +26,9 @@ export default function ExpenseTable({ siteId, onDataChange }) {
         const success = await deleteExpense(selectedExpenseId);
         if (success) {
             toast.success('Expense deleted successfully');
-            await refetch();
             onDataChange?.();
         } else {
-            toast.error(deleteError?.message || 'Failed to delete expense');
+            toast.error('Failed to delete expense');
         }
         setConfirmModalOpen(false);
         setSelectedExpenseId(null);
@@ -92,29 +42,22 @@ export default function ExpenseTable({ siteId, onDataChange }) {
     const resetForm = () => {
         setEditingExpense(null);
         setShowForm(false);
-        resetAdd();
-        resetUpdate();
-        resetDelete();
     };
 
     const handleFormSubmit = async (formData) => {
-        try {
-            let success = false;
-            if (editingExpense) {
-                success = await updateExpense(editingExpense._id, formData);
-                if (success) toast.success('Expense updated successfully');
-            } else {
-                success = await addExpense(siteId, formData);
-                if (success) toast.success('Expense added successfully');
-            }
-
-            if (success) {
-                await refetch();
-                resetForm();
-                onDataChange?.();
-            }
-        } catch (error) {
-            toast.error(error.message || 'Failed to save expense');
+        let success = false;
+        if (editingExpense) {
+            success = await updateExpense(editingExpense._id, formData);
+            if (success) toast.success('Expense updated successfully');
+        } else {
+            success = await addExpense(siteId, formData);
+            if (success) toast.success('Expense added successfully');
+        }
+        if (success) {
+            resetForm();
+            onDataChange?.();
+        } else {
+            toast.error('Failed to save expense');
         }
     };
 
@@ -137,7 +80,7 @@ export default function ExpenseTable({ siteId, onDataChange }) {
                         Expense Management
                     </h3>
                     <div className="text-sm text-gray-500">
-                        Total: {formatCurrency(totalAmount)}
+                        Total: {formatCurrency(data.reduce((sum, i) => sum + (i.amount || 0), 0))}
                     </div>
                 </div>
                 <button
@@ -149,13 +92,6 @@ export default function ExpenseTable({ siteId, onDataChange }) {
                 </button>
             </div>
 
-            {(error || addError || updateError || deleteError) && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    {error?.message || addError?.message || updateError?.message || deleteError?.message}
-                </div>
-            )}
-
-            {/* Form Modal */}
             {showForm && (
                 <ExpenseForm
                     expense={editingExpense}
@@ -168,8 +104,8 @@ export default function ExpenseTable({ siteId, onDataChange }) {
 
             {/* Expense Table */}
             <ExpenseList
-                expenses={expenses}
-                loading={loading || isDeleting}
+                expenses={data}
+                loading={isAdding || isUpdating || isDeleting}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
                 formatCurrency={formatCurrency}
@@ -178,13 +114,10 @@ export default function ExpenseTable({ siteId, onDataChange }) {
             {/* Delete Confirmation Modal */}
             <ConfirmationModal
                 isOpen={confirmModalOpen}
-                onClose={() => {
-                    setConfirmModalOpen(false);
-                    setSelectedExpenseId(null);
-                }}
+                onClose={() => setConfirmModalOpen(false)}
                 onConfirm={confirmDelete}
                 actionType="delete"
-                itemName="this expense record"
+                itemName={selectedExpenseId ? 'Expense' : ''}
                 loading={isDeleting}
             />
         </div>

@@ -3,7 +3,7 @@ import { Calendar, Mail, Phone, MapPin } from 'lucide-react';
 const StaffCard = ({ member, onStaffClick }) => {
   return (
     <div
-      onClick={() => onStaffClick(member)}
+      onClick={() => onStaffClick(member._id)}
       className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer p-6"
     >
       <div className="flex items-center space-x-4 mb-4">

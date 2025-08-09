@@ -17,9 +17,9 @@ export const useAddSite = () => {
         setSuccess(true);
         return { success: true, site: res.data.site };
       } else {
-        const errorObj = { 
+        const errorObj = {
           message: res.data.message || 'Failed to add site',
-          errors: res.data.errors 
+          errors: res.data.errors
         };
         setError(errorObj);
         return { success: false, message: errorObj.message };
@@ -58,7 +58,7 @@ export const useEditSite = () => {
     try {
       // Extract id from siteData and pass the rest as payload
       const { id, ...updateData } = siteData;
-      
+
       if (!id) {
         throw new Error('Site ID is required for editing');
       }
@@ -69,9 +69,9 @@ export const useEditSite = () => {
         setSuccess(true);
         return { success: true, site: res.data.site };
       } else {
-        const errorObj = { 
+        const errorObj = {
           message: res.data.message || 'Failed to update site',
-          errors: res.data.errors 
+          errors: res.data.errors
         };
         setError(errorObj);
         return { success: false, message: errorObj.message };
@@ -101,51 +101,67 @@ export const useGetAllSites = () => {
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [count, setCount] = useState(0);
 
-  const getAllSites = useCallback(async (status) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await axiosInstance.get('/getAllsites', {
-        params: { status: status || undefined },
-      });
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
-      const responseData = response.data;
-      
-      // Handle different response structures
-      const sitesData = responseData.data || responseData.sites || [];
-      const countData = responseData.count || sitesData.length || 0;
-      
-      setSites(sitesData);
-      setCount(countData);
-      
-      return { success: true, sites: sitesData, count: countData };
-    } catch (err) {
-      const errorObj = {
-        message: err.response?.data?.message || err.message || 'Failed to fetch sites',
-        details: err.response?.data?.error || err.response?.data?.details,
-        status: err.response?.status
-      };
-      setError(errorObj);
-      console.error('API Error:', err);
-      return { success: false, message: errorObj.message };
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const getAllSites = useCallback(
+    async ({ status, startDate, endDate, type } = {}) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await axiosInstance.get('/getAllsites', {
+          params: {
+            status: status || undefined,
+            page,
+            limit,
+            startDate,
+            endDate,
+            type,
+          },
+        });
+
+        const responseData = response.data;
+
+        const sitesData = responseData.sites || [];
+        const countData = responseData.totalSites || sitesData.length || 0;
+
+        setSites(sitesData);
+        setTotalCount(countData);
+        setTotalPages(responseData.totalPages || 1);
+
+        return { success: true, sites: sitesData, totalCount: countData };
+      } catch (err) {
+        const errorObj = {
+          message: err.response?.data?.message || err.message || 'Failed to fetch sites',
+          details: err.response?.data?.error || err.response?.data?.details,
+          status: err.response?.status,
+        };
+        setError(errorObj);
+        console.error('API Error:', err);
+        return { success: false, message: errorObj.message };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, limit]
+  );
 
   const reset = useCallback(() => {
     setSites([]);
-    setCount(0);
+    setTotalCount(0);
+    setTotalPages(0);
     setError(null);
   }, []);
 
   const updateSiteInList = useCallback((updatedSite) => {
-    setSites(prevSites => 
-      prevSites.map(site => 
-        (site.id === updatedSite.id || site._id === updatedSite._id) 
+    setSites((prevSites) =>
+      prevSites.map((site) =>
+        site._id === updatedSite._id || site.id === updatedSite.id
           ? { ...site, ...updatedSite }
           : site
       )
@@ -153,31 +169,133 @@ export const useGetAllSites = () => {
   }, []);
 
   const addSiteToList = useCallback((newSite) => {
-    setSites(prevSites => [...prevSites, newSite]);
-    setCount(prevCount => prevCount + 1);
+    setSites((prevSites) => [...prevSites, newSite]);
+    setTotalCount((prevCount) => prevCount + 1);
   }, []);
 
   const removeSiteFromList = useCallback((siteId) => {
-    setSites(prevSites => 
-      prevSites.filter(site => 
-        site.id !== siteId && site._id !== siteId
-      )
-    );
-    setCount(prevCount => Math.max(0, prevCount - 1));
+    setSites((prevSites) => prevSites.filter((site) => site._id !== siteId && site.id !== siteId));
+    setTotalCount((prevCount) => Math.max(0, prevCount - 1));
   }, []);
 
   return {
     sites,
-    count,
     loading,
     error,
+    page,
+    setPage,
+    limit,
+    setLimit,
+    totalCount,
+    totalPages,
     getAllSites,
     reset,
     updateSiteInList,
     addSiteToList,
-    removeSiteFromList
+    removeSiteFromList,
   };
 };
+
+
+export const useGetAllGenaral = () => {
+  const [sites, setSites] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const getAllSites = useCallback(
+    async ({ status, startDate, endDate, type } = {}) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await axiosInstance.get('/getAllGenaral', {
+          params: {
+            status: status || undefined,
+            page,
+            limit,
+            startDate,
+            endDate,
+            type,
+          },
+        });
+
+        const responseData = response.data;
+
+        const sitesData = responseData.sites || [];
+        const countData = responseData.totalSites || sitesData.length || 0;
+
+        setSites(sitesData);
+        setTotalCount(countData);
+        setTotalPages(responseData.totalPages || 1);
+
+        return { success: true, sites: sitesData, totalCount: countData };
+      } catch (err) {
+        const errorObj = {
+          message: err.response?.data?.message || err.message || 'Failed to fetch sites',
+          details: err.response?.data?.error || err.response?.data?.details,
+          status: err.response?.status,
+        };
+        setError(errorObj);
+        console.error('API Error:', err);
+        return { success: false, message: errorObj.message };
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, limit]
+  );
+
+  const reset = useCallback(() => {
+    setSites([]);
+    setTotalCount(0);
+    setTotalPages(0);
+    setError(null);
+  }, []);
+
+  const updateSiteInList = useCallback((updatedSite) => {
+    setSites((prevSites) =>
+      prevSites.map((site) =>
+        site._id === updatedSite._id || site.id === updatedSite.id
+          ? { ...site, ...updatedSite }
+          : site
+      )
+    );
+  }, []);
+
+  const addSiteToList = useCallback((newSite) => {
+    setSites((prevSites) => [...prevSites, newSite]);
+    setTotalCount((prevCount) => prevCount + 1);
+  }, []);
+
+  const removeSiteFromList = useCallback((siteId) => {
+    setSites((prevSites) => prevSites.filter((site) => site._id !== siteId && site.id !== siteId));
+    setTotalCount((prevCount) => Math.max(0, prevCount - 1));
+  }, []);
+
+  return {
+    sites,
+    loading,
+    error,
+    page,
+    setPage,
+    limit,
+    setLimit,
+    totalCount,
+    totalPages,
+    getAllSites,
+    reset,
+    updateSiteInList,
+    addSiteToList,
+    removeSiteFromList,
+  };
+};
+
 
 export const useGetSiteById = () => {
   const [site, setSite] = useState(null);
@@ -235,14 +353,14 @@ export const useUpdateSiteStatus = () => {
       }
 
       const res = await axiosInstance.put(`/site/status/${siteId}`, { status });
-      
+
       if (res.data.success) {
         setSuccess(true);
         return { success: true, site: res.data.site };
       } else {
-        const errorObj = { 
+        const errorObj = {
           message: res.data.message || 'Failed to update site status',
-          errors: res.data.errors 
+          errors: res.data.errors
         };
         setError(errorObj);
         return { success: false, message: errorObj.message };
@@ -284,14 +402,14 @@ export const useDeleteSite = () => {
       }
 
       const res = await axiosInstance.delete(`/deleteSite/${siteId}`);
-      
+
       if (res.data.success) {
         setSuccess(true);
         return { success: true, deletedSite: res.data.deletedSite };
       } else {
-        const errorObj = { 
+        const errorObj = {
           message: res.data.message || 'Failed to delete site',
-          errors: res.data.errors 
+          errors: res.data.errors
         };
         setError(errorObj);
         return { success: false, message: errorObj.message };
@@ -333,14 +451,14 @@ export const useDeleteSiteIncome = () => {
       }
 
       const res = await axiosInstance.delete(`/siteincome/delete/${incomeId}`);
-      
+
       if (res.data.success) {
         setSuccess(true);
         return { success: true, deletedIncome: res.data.deletedIncome };
       } else {
-        const errorObj = { 
+        const errorObj = {
           message: res.data.message || 'Failed to delete income',
-          errors: res.data.errors 
+          errors: res.data.errors
         };
         setError(errorObj);
         return { success: false, message: errorObj.message };
@@ -364,4 +482,58 @@ export const useDeleteSiteIncome = () => {
   }, []);
 
   return { deleteIncome, loading, error, success, reset };
+};
+
+
+export const useGetSiteOverview = () => {
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const getSiteOverview = useCallback(async (siteId, startDate, endDate, type, status) => {
+    setLoading(true);
+    setError(null);
+    setOverview(null);
+
+    try {
+      let url = `site/overview/${siteId}`;
+      const params = new URLSearchParams();
+
+      // Add all filter parameters
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (type) params.append('type', type);
+      if (status) params.append('status', status);
+
+      if (params.toString()) url += `?${params.toString()}`;
+
+      const response = await axiosInstance.get(url);
+      const responseData = response.data;
+
+      if (responseData.success) {
+        setOverview(responseData);
+        return { success: true, overview: responseData };
+      } else {
+        setError({ message: responseData.message || 'Failed to fetch site overview' });
+        toast.error(responseData.message || 'Failed to fetch site overview');
+        return { success: false };
+      }
+    } catch (err) {
+      setError({
+        message: 'Failed to fetch site overview',
+        details: err.response?.data?.message || err.message,
+      });
+      toast.error(err.response?.data?.message || err.message || 'Failed to fetch site overview');
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = () => {
+    setOverview(null);
+    setError(null);
+  };
+
+  return { overview, loading, error, getSiteOverview, reset };
 };

@@ -1,148 +1,246 @@
-import { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import StaffInfoCard from './staffdetails/StaffInfoCard';
+import StaffTabs from './staffdetails/StaffTabs';
+import StaffLeavesTab from './staffdetails/StaffLeavesTab';
+import StaffAdvancesTab from './staffdetails/StaffAdvancesTab';
+import StaffIncrementsTab from './staffdetails/StaffIncrementsTab';
+import AddStaff from '../../components/admin/forms/AddStaff';
 import {
-  ArrowLeft,
-  Calendar,
-  Mail,
-  Phone,
-  MapPin,
-  DollarSign,
-  Filter
-} from 'lucide-react';
-import StaffViewFilter from '../../components/admin/filters/StaffViewFilter';
-import StaffLeave from '../../components/admin/StaffLeave';
-import StaffAdvancePayment from '../../components/admin/StaffAdvancePayment';
+  useAddStaffLeave,
+  useGetPublicStaffById,
+  useDeleteStaff,
+  useUpdateStaff,
+  useDeleteStaffLeave
+} from '../../hooks/staff/Addstaffhooks';
+import LoadingSpinner from '../../components/admin/LoadingSpinner';
+import StaffNotFound from '../../components/admin/StaffNotFound';
+import BackButton from '../../components/admin/BackButton';
 
-const StaffDetail = ({
-  staff = {
-    id: 1,
-    name: 'John Doe',
-    position: 'Senior Developer',
-    department: 'Engineering',
-    email: 'john.doe@company.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St, City, State',
-    joinDate: '2023-01-15',
-    avatar:
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
-  },
-  onBack = () => console.log('Back clicked'),
-  onAddLeave = () => console.log('Add leave'),
-  onAddAdvancePayment = () => console.log('Add payment'),
-  leaves = [],
-  advancePayments = []
-}) => {
+const StaffDetail = ({ onBack, onDelete }) => {
+  const { staffId } = useParams();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('leaves');
-  const [dateFilter, setDateFilter] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
+  const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState(null);
+
+
+  const {
+    staff: staffData,
+    loading: staffLoading,
+    error: staffError,
+    getPublicStaffById,
+    reset: resetPublicStaff
+  } = useGetPublicStaffById();
+
+
+
+  const {
+    loading: addLeaveLoading,
+    error: addLeaveError,
+    addStaffLeave,
+    reset: resetAddLeave
+  } = useAddStaffLeave();
+
+  // Delete staff hook
+  const {
+    loading: deleteLoading,
+    error: deleteError,
+    deleteStaff,
+    reset: resetDelete
+  } = useDeleteStaff();
+
+  // Update staff hook
+  const {
+    loading: updateLoading,
+    error: updateError,
+    updateStaff,
+    reset: resetUpdate
+  } = useUpdateStaff();
+
+  // Delete staff leave hook
+  const {
+    loading: deleteLeaveLoading,
+    error: deleteLeaveError,
+    deleteStaffLeave,
+    reset: resetDeleteLeave
+  } = useDeleteStaffLeave();
+
+  useEffect(() => {
+    // Defensive: ensure dateFilter is always an object
+    const safeDateFilter = dateFilter || { startDate: '', endDate: '' };
+    if (staffId && typeof staffId === 'string' && staffId.trim() !== '') {
+      getPublicStaffById(staffId, safeDateFilter.startDate, safeDateFilter.endDate);
+    }
+  }, [staffId, dateFilter]);
+
+  // Delete staff handler
+  const handleDeleteStaff = useCallback(async (id) => {
+    if (!id) return;
+    const result = await deleteStaff(id);
+    if (result.success) {
+      if (onDelete) onDelete(id);
+      navigate('/admin/staff'); // Go back to staff list
+    }
+  }, [deleteStaff, onDelete, navigate]);
+
+  // Edit wage handler
+  const handleEditWage = async (wageData) => {
+    if (!staffData?._id) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      // Only update wage-related fields
+      const updateFields = {
+        dailyWage: wageData.newWage,
+        previousWage: wageData.previousWage,
+        incrementAmount: wageData.incrementAmount,
+        effectiveDate: wageData.effectiveDate,
+        incrementReason: wageData.reason
+      };
+      const result = await updateStaff(staffData._id, updateFields);
+      if (result.success) {
+        getPublicStaffById(staffId); // Refresh all data
+      } else {
+        setEditError(updateError || 'Failed to update wage');
+      }
+    } catch (err) {
+      setEditError(err.message || 'Failed to update wage');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+
+  const handleEditStaff = async (formData) => {
+    if (!staffData?._id) return;
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const result = await updateStaff(staffData._id, formData);
+      if (result.success) {
+        getPublicStaffById(staffId); // Refresh all data
+        setShowEditModal(false);
+      } else {
+        setEditError(updateError || 'Failed to update staff');
+      }
+    } catch (err) {
+      setEditError(err.message || 'Failed to update staff');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleLeaveSubmit = async (leaveData) => {
+    try {
+      const result = await addStaffLeave(staffId, leaveData);
+      if (result.success) {
+        getPublicStaffById(staffId); // Refresh all data
+        setShowLeaveForm(false);
+        resetAddLeave();
+      } else {
+        console.error('Error submitting leave:', addLeaveError);
+      }
+    } catch (error) {
+      console.error('Error submitting leave:', error);
+    }
+  };
+
+  const isLoading = !!staffLoading || deleteLoading || updateLoading || editLoading;
+
+  if (isLoading && !staffData) {
+    return <LoadingSpinner message="Loading staff details..." />;
+  }
+
+  if (!staffData?.data) {
+    return <StaffNotFound onBack={onBack} />;
+  }
+
+  // Now it's safe to destructure from staffData.data
+  const { staff, period, attendance, finances, wageInfo } = staffData.data;
+  const salaryDetails = {
+    currentDailyWage: staff.currentDailyWage,
+    wagePerDay: wageInfo?.wagePerDay,
+    dailyWage: wageInfo?.appliedWage ?? staff?.dailyWage,
+    daysInMonth: period?.totalDays,
+    daysWorked: attendance?.daysWorked,
+    leaveDays: attendance?.leaveDays,
+    advancePaid: finances?.advancePaid,
+    monthlySalary: finances?.monthlySalary,
+    finalSalary: finances?.finalSalary,
+  };
+  const basicStaff = {
+    ...staff,
+    dailyWage: wageInfo?.appliedWage ?? staff?.dailyWage,
+  };
+  const safeLeaveData = Array.isArray(attendance?.leaveData) ? attendance.leaveData : [];
+  const safeAdvances = Array.isArray(finances?.advances) ? finances.advances : [];
+  console.log("safeLeaveData", attendance);
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Back button */}
-        <button
-          onClick={onBack}
-          className="flex items-center text-blue-600 hover:text-blue-800 mb-4 text-sm"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Staff List
-        </button>
-
-        {/* Staff Info Card */}
-        <div className="bg-white rounded-xl shadow-md border p-4 sm:p-6 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <img
-              src={staff.avatar}
-              alt={staff.name}
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover self-center sm:self-start"
+        <BackButton onBack={onBack} />
+        <StaffInfoCard
+          staffData={basicStaff}
+          salaryDetails={salaryDetails}
+          onDelete={handleDeleteStaff}
+          onEditWage={handleEditWage}
+          onEdit={() => { console.log('Edit Staff button clicked'); setShowEditModal(true); }}
+        />
+        <StaffTabs
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          showFilter={showFilter}
+          setShowFilter={setShowFilter}
+          handleDateFilterChange={setDateFilter}
+        />
+        <div className="bg-white rounded-xl shadow-md border p-4 sm:p-6">
+          {activeTab === 'leaves' && (
+            <StaffLeavesTab
+              staffId={staff?._id}
+              leaves={safeLeaveData}
+              leavesLoading={isLoading}
+              showLeaveForm={showLeaveForm}
+              setShowLeaveForm={setShowLeaveForm}
+              handleRefreshLeaves={() => getPublicStaffById(staff?._id)}
+              handleLeaveSubmit={handleLeaveSubmit}
+              addLeaveLoading={addLeaveLoading}
+              resetAddLeave={resetAddLeave}
+              deleteStaffLeave={deleteStaffLeave}
+              deleteLeaveLoading={deleteLeaveLoading}
             />
-            <div className="flex-1">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2">
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{staff.name}</h1>
-                  <p className="text-sm sm:text-base text-gray-600">{staff.position}</p>
-                </div>
-                <span className="bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium px-3 py-1 rounded-full mt-2 sm:mt-0">
-                  {staff.department}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                <div className="flex items-start">
-                  <Mail className="w-4 h-4 mr-2 mt-0.5 text-gray-500" />
-                  <span>{staff.email}</span>
-                </div>
-                <div className="flex items-center">
-                  <Phone className="w-4 h-4 mr-2 text-gray-500" />
-                  <span>{staff.phone}</span>
-                </div>
-                <div className="flex items-start">
-                  <MapPin className="w-4 h-4 mr-2 mt-0.5 text-gray-500" />
-                  <span>{staff.address}</span>
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-2 text-gray-500" />
-                  <span>Joined: {new Date(staff.joinDate).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs and Filter Section */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
-            <button
-              onClick={() => setShowFilter(!showFilter)}
-              className="sm:hidden flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg text-sm"
-            >
-              <Filter className="w-4 h-4" /> {showFilter ? 'Hide Filters' : 'Show Filters'}
-            </button>
-
-            <div className="w-full sm:w-auto border-b border-gray-200">
-              <nav className="flex -mb-px">
-                <button
-                  onClick={() => setActiveTab('leaves')}
-                  className={`flex-1 sm:flex-initial text-center py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'leaves'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <Calendar className="inline w-4 h-4 mr-1" /> Leaves
-                </button>
-                <button
-                  onClick={() => setActiveTab('payments')}
-                  className={`flex-1 sm:flex-initial text-center py-2 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'payments'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <DollarSign className="inline w-4 h-4 mr-1" /> Payments
-                </button>
-              </nav>
-            </div>
-          </div>
-
-          {(showFilter || typeof window !== 'undefined' && window.innerWidth >= 640) && (
-            <div className="mt-4">
-              <StaffViewFilter onFilterChange={setDateFilter} />
-            </div>
+          )}
+          {activeTab === 'payments' && (
+            <StaffAdvancesTab
+              staffId={staff?._id}
+              staffAdvances={safeAdvances}
+              advancesLoading={isLoading}
+              handleRefreshAdvances={() => getPublicStaffById(staff?._id)}
+            />
+          )}
+          {activeTab === 'increments' && (
+            <StaffIncrementsTab
+              incrementHistory={wageInfo?.wageIncrements || []}
+              incrementLoading={isLoading}
+              incrementsThisMonth={wageInfo?.wageIncrementsThisMonth || []}
+            />
           )}
         </div>
-
-        {/* Tab Contents */}
-        {activeTab === 'leaves' ? (
-          <StaffLeave
-            staffId={staff.id}
-            leaves={leaves}
-            onAddLeave={onAddLeave}
-            dateFilter={dateFilter}
-          />
-        ) : (
-          <StaffAdvancePayment
-            staffId={staff.id}
-            advancePayments={advancePayments}
-            onAddAdvancePayment={onAddAdvancePayment}
-            dateFilter={dateFilter}
+        {/* Edit Staff Modal */}
+        {showEditModal && (
+          <AddStaff
+            mode="edit"
+            staff={staff}
+            onClose={() => setShowEditModal(false)}
+            onSubmit={handleEditStaff}
+            loading={editLoading}
+            error={editError}
           />
         )}
       </div>
@@ -150,4 +248,10 @@ const StaffDetail = ({
   );
 };
 
+StaffDetail.defaultProps = {
+  onBack: () => console.log('Back clicked'),
+  onDelete: (id) => console.log('Delete clicked', id)
+};
+
 export default StaffDetail;
+

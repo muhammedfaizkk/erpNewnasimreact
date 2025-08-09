@@ -1,75 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { TrendingUp, Search, Plus } from 'lucide-react';
 import IncomeForm from '../forms/IncomeForm';
 import IncomeList from './IncomeList';
 import ConfirmationModal from '../../admin/ConfirmationModal';
 import { toast } from 'react-toastify';
-import {
-    useFetchSiteIncome,
-    useAddSiteIncome,
-    useUpdateSiteIncome,
-    useDeleteSiteIncome,
-} from '../../../hooks/site/SiteIncomehook';
+import { useAddSiteIncome, useUpdateSiteIncome, useDeleteSiteIncome } from '../../../hooks/site/SiteIncomehook';
 
-export default function IncomeTable({ siteId, onDataChange }) {
-    console.log('siteId', siteId);
-
+export default function IncomeTable({ data = [], onDataChange, siteId }) {
     const [showForm, setShowForm] = useState(false);
     const [editingIncome, setEditingIncome] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterCategory, setFilterCategory] = useState('');
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
     const [selectedIncomeId, setSelectedIncomeId] = useState(null);
 
-    const {
-        incomes,
-        loading,
-        error,
-        totalAmount,
-        refetch,
-        reset,
-    } = useFetchSiteIncome(siteId);
-
-    const {
-        addIncome,
-        loading: isAdding,
-        error: addError,
-        success,
-        income,
-        reset: resetAdd,
-    } = useAddSiteIncome();
-
-    const {
-        updateIncome,
-        isLoading: isUpdating,
-        error: updateError,
-        reset: resetUpdate,
-    } = useUpdateSiteIncome();
-
-    const {
-        deleteIncome,
-        isLoading: isDeleting,
-        error: deleteError,
-        reset: resetDelete,
-    } = useDeleteSiteIncome();
-
-    const categories = ['advance', 'milestone', 'final_payment', 'bonus', 'other'];
-
-  useEffect(() => {
-    if (!siteId) return;
-    
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    const delayDebounce = setTimeout(() => {
-        refetch({ signal }); // Pass the signal to your fetch function
-    }, 300);
-
-    return () => {
-        clearTimeout(delayDebounce);
-        controller.abort();
-    };
-}, [siteId]);
+    const { addIncome, loading: isAdding } = useAddSiteIncome();
+    const { updateIncome, isLoading: isUpdating } = useUpdateSiteIncome();
+    const { deleteIncome, isLoading: isDeleting } = useDeleteSiteIncome();
 
     const handleDeleteClick = (incomeId) => {
         setSelectedIncomeId(incomeId);
@@ -81,10 +27,9 @@ export default function IncomeTable({ siteId, onDataChange }) {
         const success = await deleteIncome(selectedIncomeId);
         if (success) {
             toast.success('Income deleted successfully');
-            await refetch();
             onDataChange?.();
         } else {
-            toast.error(deleteError?.message || 'Failed to delete income');
+            toast.error('Failed to delete income');
         }
         setConfirmModalOpen(false);
         setSelectedIncomeId(null);
@@ -98,29 +43,22 @@ export default function IncomeTable({ siteId, onDataChange }) {
     const resetForm = () => {
         setEditingIncome(null);
         setShowForm(false);
-        resetAdd();
-        resetDelete();
     };
 
     const handleFormSubmit = async (formData) => {
-        try {
-            let success = false;
-            if (editingIncome) {
-                success = await updateIncome(editingIncome._id, formData);
-                if (success) toast.success('Income updated successfully');
-            } else {
-                success = await addIncome(siteId, formData);
-
-                if (success) toast.success('Income added successfully');
-            }
-
-            if (success) {
-                await refetch();
-                resetForm();
-                onDataChange?.();
-            }
-        } catch (error) {
-            toast.error(error.message || 'Failed to save income');
+        let success = false;
+        if (editingIncome) {
+            success = await updateIncome(editingIncome._id, formData);
+            if (success) toast.success('Income updated successfully');
+        } else {
+            success = await addIncome(siteId, formData);
+            if (success) toast.success('Income added successfully');
+        }
+        if (success) {
+            resetForm();
+            onDataChange?.();
+        } else {
+            toast.error('Failed to save income');
         }
     };
 
@@ -133,20 +71,12 @@ export default function IncomeTable({ siteId, onDataChange }) {
         }).format(amount);
     };
 
-    const filteredIncomes = incomes?.filter(income => {
+    const filteredIncomes = data.filter(income => {
         const title = income.title || '';
         const description = income.description || '';
         const searchString = `${title} ${description}`.toLowerCase();
         return searchString.includes(searchTerm.toLowerCase());
-    }) || [];
-
-    if (!siteId) {
-        return (
-            <div className="text-center py-8 text-gray-500">
-                Please select a site to view income records
-            </div>
-        );
-    }
+    });
 
     return (
         <div className="space-y-6">
@@ -157,7 +87,7 @@ export default function IncomeTable({ siteId, onDataChange }) {
                         Income Management
                     </h3>
                     <div className="text-sm text-gray-500">
-                        Total: {formatCurrency(totalAmount)}
+                        Total: {formatCurrency(filteredIncomes.reduce((sum, i) => sum + (i.amount || 0), 0))}
                     </div>
                 </div>
                 <button
@@ -168,14 +98,6 @@ export default function IncomeTable({ siteId, onDataChange }) {
                     <span>Add Income</span>
                 </button>
             </div>
-
-
-
-            {(error || addError || updateError || deleteError) && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    {error?.message || addError?.message || updateError?.message || deleteError?.message}
-                </div>
-            )}
 
             {showForm && (
                 <IncomeForm
@@ -189,7 +111,7 @@ export default function IncomeTable({ siteId, onDataChange }) {
 
             <IncomeList
                 incomes={filteredIncomes}
-                loading={loading || isDeleting}
+                loading={isAdding || isUpdating || isDeleting}
                 onEdit={handleEdit}
                 onDelete={handleDeleteClick}
                 formatCurrency={formatCurrency}
@@ -197,13 +119,10 @@ export default function IncomeTable({ siteId, onDataChange }) {
 
             <ConfirmationModal
                 isOpen={confirmModalOpen}
-                onClose={() => {
-                    setConfirmModalOpen(false);
-                    setSelectedIncomeId(null);
-                }}
+                onClose={() => setConfirmModalOpen(false)}
                 onConfirm={confirmDelete}
                 actionType="delete"
-                itemName="this income record"
+                itemName={selectedIncomeId ? 'Income' : ''}
                 loading={isDeleting}
             />
         </div>

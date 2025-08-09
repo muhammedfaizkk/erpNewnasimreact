@@ -1,30 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Clock, CheckCircle, AlertCircle, XCircle, Plus } from 'lucide-react';
 import SiteCard from '../../components/admin/cards/SiteCard';
 import SiteTable from '../../components/admin/tables/SiteTable';
-import SiteDetailView from '../../components/admin/SiteDetailView';
-import SiteFilter from '../../components/admin/filters/SiteFilter';
 import Addsites from '../../components/admin/forms/Addsites';
 import ConfirmationModal from '../../components/admin/ConfirmationModal';
-import { useGetAllSites, useAddSite, useEditSite, useDeleteSite } from '../../hooks/site/Sitehooks';
+import { useGetAllGenaral, useAddSite, useEditSite, useDeleteSite } from '../../hooks/site/Sitehooks';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import SiteDetailView from '../../components/admin/SiteDetailView';
+import { useNavigate } from 'react-router-dom';
+import SiteFilter from '../../components/admin/filters/SiteFilter';
 
 const Genaral = () => {
-  // State for site data and UI
   const [selectedSite, setSelectedSite] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
 
-  // Modal states
   const [isSiteModalOpen, setIsSiteModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentSite, setCurrentSite] = useState(null);
-
-  // API hooks
   const {
     getAllSites,
     loading: loadingSites,
@@ -32,7 +27,7 @@ const Genaral = () => {
     sites,
     count,
     reset: resetSites
-  } = useGetAllSites();
+  } = useGetAllGenaral();
 
   const { addSite, loading: adding, error: addError } = useAddSite();
   const { editSite, loading: editing, error: editError } = useEditSite();
@@ -42,25 +37,13 @@ const Genaral = () => {
   const loading = loadingSites || adding || editing || deleting;
   const error = sitesError || addError || editError || deleteError;
 
-  // Load sites on component mount and when status filter changes
-  useEffect(() => {
-    const fetchSites = async () => {
-      await getAllSites(statusFilter === 'all' ? undefined : statusFilter);
-    };
-    fetchSites();
-  }, [statusFilter, getAllSites]);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileView(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Helper functions
-  const getStatusColor = (status) => {
+  // Memoized helper functions to prevent unnecessary re-renders
+  const getStatusColor = useCallback((status) => {
     switch (status?.toLowerCase()) {
       case 'active':
       case 'on going': return 'text-green-600 bg-green-100';
@@ -69,9 +52,9 @@ const Genaral = () => {
       case 'cancelled': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';
     }
-  };
+  }, []);
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = useCallback((status) => {
     switch (status?.toLowerCase()) {
       case 'active':
       case 'on going':
@@ -84,88 +67,169 @@ const Genaral = () => {
       default:
         return <AlertCircle className="w-4 h-4" />;
     }
-  };
+  }, []);
 
-  const formatCurrency = (amount) => {
+  const formatCurrency = useCallback((amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount || 0);
-  };
+  }, []);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     return dateString ? new Date(dateString).toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric'
     }) : 'N/A';
-  };
+  }, []);
 
-  const calculateBalance = (site) => {
+  const calculateBalance = useCallback((site) => {
     return (site?.totalIncome || 0) - (site?.totalExpense || 0);
-  };
+  }, []);
 
-  // Filter and search handlers
-  const handleStatusFilterChange = (status) => {
+  // Load sites function with better error handling
+  const loadSites = useCallback(async () => {
+    try {
+      await getAllSites();
+    } catch (err) {
+      console.error('Error loading sites:', err);
+      toast.error('Failed to load sites');
+    }
+  }, [getAllSites]);
+
+  useEffect(() => {
+    loadSites();
+  }, []);
+
+  // Handle status filter changes
+  const handleStatusFilterChange = useCallback((status) => {
     setStatusFilter(status);
-  };
+  }, []);
 
-  const handleSearch = (term) => {
+  const handleSearch = useCallback((term) => {
     setSearchTerm(term.toLowerCase());
-  };
+  }, []);
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-  const refreshSites = async () => {
-    resetSites();
-    await getAllSites(statusFilter === 'all' ? undefined : statusFilter);
-  };
+  // Filtering logic: type === 'General', then status, then search
+  const filteredSites = useMemo(() => {
+    let filtered = sites.filter(site => site.type === 'General');
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(site => {
+        const siteStatus = site.status?.toLowerCase();
+        const filterStatus = statusFilter.toLowerCase();
+        if (filterStatus === 'active') {
+          return siteStatus === 'active' || siteStatus === 'on going';
+        }
+        return siteStatus === filterStatus;
+      });
+    }
+    if (searchTerm && searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(site =>
+        site.name?.toLowerCase().includes(searchLower) ||
+        site.place?.toLowerCase().includes(searchLower) ||
+        site.contactNumber?.includes(searchTerm.trim())
+      );
+    }
+    return filtered;
+  }, [sites, statusFilter, searchTerm]);
+
+  // Paginate filtered sites
+  const paginatedSites = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredSites.slice(start, end);
+  }, [filteredSites, page, pageSize]);
+
+  const totalPages = Math.ceil(filteredSites.length / pageSize);
+
+  // Reset to page 1 if filters change and current page is out of range
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [filteredSites, totalPages]);
+
+  // Memoized statistics to prevent unnecessary calculations
+  const statistics = useMemo(() => {
+    const sitesOnly = sites.filter(site => site.type === 'Site');
+
+    const totalCount = sitesOnly.length;
+    const activeCount = sitesOnly.filter(site => {
+      const status = site.status?.toLowerCase();
+      return status === 'active' || status === 'on going';
+    }).length;
+    const pendingCount = sitesOnly.filter(s => s.status?.toLowerCase() === 'pending').length;
+    const totalBalance = sitesOnly.reduce((sum, site) => sum + calculateBalance(site), 0);
+
+    return {
+      totalCount,
+      activeCount,
+      pendingCount,
+      totalBalance
+    };
+  }, [sites, calculateBalance]);
 
   // Site actions
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setModalMode('add');
     setCurrentSite(null);
     setIsSiteModalOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (site) => {
+  const handleEdit = useCallback((site) => {
     setModalMode('edit');
     setCurrentSite(site);
     setIsSiteModalOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (site) => {
+  const handleDelete = useCallback((site) => {
     setCurrentSite(site);
     setIsConfirmModalOpen(true);
-  };
+  }, []);
 
-  const handleConfirmAction = async () => {
+  const handleConfirmAction = useCallback(async () => {
     if (currentSite) {
-      const result = await deleteSite(currentSite.id || currentSite._id);
-      if (result.success) {
-        toast.success('Site deleted successfully');
-        await refreshSites();
-      } else {
-        toast.error(result.message || 'Failed to delete site');
+      try {
+        const result = await deleteSite(currentSite.id || currentSite._id);
+        if (result.success) {
+          toast.success('Site deleted successfully');
+          // Refresh the current filter view
+          await loadSites();
+        } else {
+          toast.error(result.message || 'Failed to delete site');
+        }
+      } catch (err) {
+        console.error('Delete error:', err);
+        toast.error('Failed to delete site');
       }
     }
     setIsConfirmModalOpen(false);
     setCurrentSite(null);
-  };
+  }, [currentSite, deleteSite, loadSites]);
 
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     setIsSiteModalOpen(false);
     setCurrentSite(null);
     setModalMode('add');
-  };
+  }, []);
 
-  const handleSubmitSite = async (formData) => {
+  const handleSubmitSite = useCallback(async (formData) => {
     try {
       // Date validation
       const startDate = new Date(formData.startDate);
       const dueDate = new Date(formData.dueDate);
-      
+
       if (dueDate <= startDate) {
         toast.error('Due date must be later than start date');
         return;
@@ -189,7 +253,8 @@ const Genaral = () => {
 
       if (result.success) {
         toast.success(`Site ${modalMode === 'add' ? 'added' : 'updated'} successfully`);
-        await refreshSites();
+        // Refresh the sites list with current filter
+        await loadSites();
         handleModalClose();
       } else {
         toast.error(result.message || `Failed to ${modalMode === 'add' ? 'add' : 'update'} site`);
@@ -198,45 +263,14 @@ const Genaral = () => {
       console.error('Submit error:', err);
       toast.error(`Failed to ${modalMode === 'add' ? 'add' : 'update'} site: ${err.message}`);
     }
-  };
+  }, [modalMode, addSite, editSite, currentSite, loadSites, handleModalClose]);
 
-  // Filter sites to only show type === 'Site' and apply search
-  const filteredSites = sites
-    .filter(site => site.type === 'Site')
-    .filter(site => 
-      site.name?.toLowerCase().includes(searchTerm) ||
-      site.place?.toLowerCase().includes(searchTerm) ||
-      site.contactNumber?.includes(searchTerm)
-    );
+  const navigate = useNavigate();
 
-  // Get active sites count
-  const getActiveCount = () => {
-    return sites
-      .filter(site => site.type === 'Site')
-      .filter(site => {
-        const status = site.status?.toLowerCase();
-        return status === 'active' || status === 'on going';
-      }).length;
-  };
-
-  // Get total count for type 'Site'
-  const getSiteCount = () => {
-    return sites.filter(site => site.type === 'Site').length;
-  };
-
-  // Get pending count for type 'Site'
-  const getPendingCount = () => {
-    return sites
-      .filter(site => site.type === 'Site')
-      .filter(s => s.status?.toLowerCase() === 'pending').length;
-  };
-
-  // Calculate total balance for type 'Site' only
-  const getTotalBalance = () => {
-    return sites
-      .filter(site => site.type === 'Site')
-      .reduce((sum, site) => sum + calculateBalance(site), 0);
-  };
+  // Add handleView for navigation
+  const handleView = useCallback((site) => {
+    navigate(`/sitedetailview/${site.id || site._id}`);
+  }, [navigate]);
 
   if (selectedSite) {
     return (
@@ -274,24 +308,20 @@ const Genaral = () => {
 
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-blue-50 rounded-lg p-3 text-center">
-              <div className="text-lg font-bold text-blue-600">{getSiteCount()}</div>
+              <div className="text-lg font-bold text-blue-600">{statistics.totalCount}</div>
               <div className="text-xs text-blue-500">Total Sites</div>
             </div>
             <div className="bg-green-50 rounded-lg p-3 text-center">
-              <div className="text-lg font-bold text-green-600">
-                {getActiveCount()}
-              </div>
+              <div className="text-lg font-bold text-green-600">{statistics.activeCount}</div>
               <div className="text-xs text-green-500">Active</div>
             </div>
             <div className="bg-yellow-50 rounded-lg p-3 text-center">
-              <div className="text-lg font-bold text-yellow-600">
-                {getPendingCount()}
-              </div>
+              <div className="text-lg font-bold text-yellow-600">{statistics.pendingCount}</div>
               <div className="text-xs text-yellow-500">Pending</div>
             </div>
             <div className="bg-purple-50 rounded-lg p-3 text-center">
               <div className="text-lg font-bold text-purple-600">
-                {formatCurrency(getTotalBalance())}
+                {formatCurrency(statistics.totalBalance)}
               </div>
               <div className="text-xs text-purple-500">Total Balance</div>
             </div>
@@ -300,6 +330,15 @@ const Genaral = () => {
       </div>
 
       <div className="p-4">
+        {/* Filter UI */}
+        <SiteFilter
+          onStatusFilterChange={handleStatusFilterChange}
+          onSearch={handleSearch}
+          currentStatus={statusFilter}
+          searchTerm={searchTerm}
+          loading={loading}
+        />
+
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
             <div className="flex">
@@ -322,45 +361,91 @@ const Genaral = () => {
           </div>
         )}
 
-        <SiteFilter
-          onStatusFilterChange={handleStatusFilterChange}
-          onSearch={handleSearch}
-          currentStatus={statusFilter}
-          searchTerm={searchTerm}
-          loading={loading}
-        />
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-600">Loading sites...</span>
+          </div>
+        )}
 
-        {isMobileView ? (
-          <div className="grid grid-cols-1 gap-4 mt-4">
-            {filteredSites.map(site => (
-              <SiteCard
-                key={site.id || site._id}
-                site={site}
-                onClick={() => setSelectedSite(site)}
-                onEdit={() => handleEdit(site)}
-                onDelete={() => handleDelete(site)}
-                formatCurrency={formatCurrency}
-                getStatusColor={getStatusColor}
-                getStatusIcon={getStatusIcon}
-                calculateBalance={calculateBalance}
-              />
-            ))}
+        {/* No Results State */}
+        {!loading && filteredSites.length === 0 && (
+          <div className="text-center py-8">
+            <div className="text-gray-500 text-lg mb-2">No sites found</div>
+            <div className="text-gray-400 text-sm">
+              No sites match the current filter
+            </div>
           </div>
-        ) : (
-          <div className="mt-4 bg-white rounded-lg shadow overflow-hidden">
-            <SiteTable
-              sites={filteredSites}
-              onRowClick={setSelectedSite}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              calculateBalance={calculateBalance}
-              loading={loading}
-              formatCurrency={formatCurrency}
-              formatDate={formatDate}
-              getStatusColor={getStatusColor}
-              getStatusIcon={getStatusIcon}
-            />
-          </div>
+        )}
+
+        {/* Results */}
+        {!loading && filteredSites.length > 0 && (
+          <>
+            {isMobileView ? (
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                {paginatedSites.map(site => (
+                  <SiteCard
+                    key={site._id || site.id}
+                    site={site}
+                    onViewClick={handleView}
+                    onEditClick={() => handleEdit(site)}
+                    onDeleteClick={() => handleDelete(site)}
+                    formatCurrency={formatCurrency}
+                    getStatusColor={getStatusColor}
+                    getStatusIcon={getStatusIcon}
+                    calculateBalance={calculateBalance}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 bg-white rounded-lg shadow overflow-hidden">
+                <SiteTable
+                  sites={paginatedSites}
+                  onRowClick={handleView}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  loading={loading}
+                  formatCurrency={formatCurrency}
+                  formatDate={formatDate}
+                  getStatusColor={getStatusColor}
+                  getStatusIcon={getStatusIcon}
+                  calculateBalance={calculateBalance}
+                />
+              </div>
+            )}
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center space-x-1 my-6">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                  Prev
+                </button>
+                {[...Array(totalPages)].map((_, index) => {
+                  const pageNum = index + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`px-3 py-1 border rounded ${page === pageNum ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 border rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Site Modal */}

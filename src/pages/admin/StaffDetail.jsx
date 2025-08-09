@@ -12,13 +12,15 @@ import {
   useGetPublicStaffById,
   useDeleteStaff,
   useUpdateStaff,
-  useDeleteStaffLeave
+  useDeleteStaffLeave,
+  useAddWageIncrement,
+  useEditWageIncrement,
 } from '../../hooks/staff/Addstaffhooks';
 import LoadingSpinner from '../../components/admin/LoadingSpinner';
 import StaffNotFound from '../../components/admin/StaffNotFound';
 import BackButton from '../../components/admin/BackButton';
 
-const StaffDetail = ({ onBack, onDelete }) => {
+const StaffDetail = ({ onBack }) => {
   const { staffId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('leaves');
@@ -29,93 +31,114 @@ const StaffDetail = ({ onBack, onDelete }) => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState(null);
 
-
   const {
     staff: staffData,
     loading: staffLoading,
     error: staffError,
     getPublicStaffById,
-    reset: resetPublicStaff
+    reset: resetPublicStaff,
   } = useGetPublicStaffById();
-
-
 
   const {
     loading: addLeaveLoading,
     error: addLeaveError,
     addStaffLeave,
-    reset: resetAddLeave
+    reset: resetAddLeave,
   } = useAddStaffLeave();
 
-  // Delete staff hook
   const {
     loading: deleteLoading,
     error: deleteError,
     deleteStaff,
-    reset: resetDelete
+    reset: resetDelete,
   } = useDeleteStaff();
 
-  // Update staff hook
   const {
     loading: updateLoading,
     error: updateError,
     updateStaff,
-    reset: resetUpdate
+    reset: resetUpdate,
   } = useUpdateStaff();
 
-  // Delete staff leave hook
   const {
     loading: deleteLeaveLoading,
     error: deleteLeaveError,
     deleteStaffLeave,
-    reset: resetDeleteLeave
+    reset: resetDeleteLeave,
   } = useDeleteStaffLeave();
 
+  const {
+    loading: addIncrementLoading,
+    error: addIncrementError,
+    addWageIncrement,
+    reset: resetAddIncrement,
+  } = useAddWageIncrement();
+
+  const {
+    loading: updateIncrementLoading,
+    error: updateIncrementError,
+    editWageIncrement,
+    reset: resetUpdateIncrement,
+  } = useEditWageIncrement();
+
   useEffect(() => {
-    // Defensive: ensure dateFilter is always an object
     const safeDateFilter = dateFilter || { startDate: '', endDate: '' };
     if (staffId && typeof staffId === 'string' && staffId.trim() !== '') {
       getPublicStaffById(staffId, safeDateFilter.startDate, safeDateFilter.endDate);
     }
-  }, [staffId, dateFilter]);
+  }, [staffId, dateFilter, getPublicStaffById]);
 
-  // Delete staff handler
-  const handleDeleteStaff = useCallback(async (id) => {
-    if (!id) return;
-    const result = await deleteStaff(id);
-    if (result.success) {
-      if (onDelete) onDelete(id);
-      navigate('/admin/staff'); // Go back to staff list
-    }
-  }, [deleteStaff, onDelete, navigate]);
+  useEffect(() => {
+    return () => {
+      resetAddIncrement();
+      resetUpdateIncrement();
+    };
+  }, [resetAddIncrement, resetUpdateIncrement]);
 
-  // Edit wage handler
-  const handleEditWage = async (wageData) => {
-    if (!staffData?._id) return;
-    setEditLoading(true);
-    setEditError(null);
-    try {
-      // Only update wage-related fields
-      const updateFields = {
-        dailyWage: wageData.newWage,
-        previousWage: wageData.previousWage,
-        incrementAmount: wageData.incrementAmount,
-        effectiveDate: wageData.effectiveDate,
-        incrementReason: wageData.reason
-      };
-      const result = await updateStaff(staffData._id, updateFields);
+  const handleDeleteStaff = useCallback(
+    async (id) => {
+      if (!id) return;
+      const result = await deleteStaff(id);
       if (result.success) {
-        getPublicStaffById(staffId); // Refresh all data
-      } else {
-        setEditError(updateError || 'Failed to update wage');
+        navigate('/admin/staff');
       }
-    } catch (err) {
-      setEditError(err.message || 'Failed to update wage');
-    } finally {
-      setEditLoading(false);
-    }
-  };
+    },
+    [deleteStaff, navigate]
+  );
 
+  const handleEditWage = useCallback(
+    async (wageData) => {
+      if (!staffData?._id) return;
+      setEditLoading(true);
+      setEditError(null);
+      try {
+        const { incrementId, ...updateFields } = wageData;
+        let result;
+        if (incrementId) {
+          // Edit existing wage increment
+          result = await editWageIncrement(staffData._id, incrementId, updateFields);
+        } else {
+          // Add new wage increment
+          result = await addWageIncrement(staffData._id, {
+            ...updateFields,
+            previousWage: staffData.data.staff.currentDailyWage,
+            incrementAmount: updateFields.newWage - staffData.data.staff.currentDailyWage,
+            incrementPercentage: ((updateFields.newWage - staffData.data.staff.currentDailyWage) / staffData.data.staff.currentDailyWage * 100).toFixed(2),
+          });
+        }
+        if (result.success) {
+          await getPublicStaffById(staffId, dateFilter.startDate, dateFilter.endDate);
+        } else {
+          setEditError(updateIncrementError || addIncrementError || 'Failed to update wage');
+        }
+      } catch (err) {
+        setEditError(err.message || 'Failed to update wage');
+      } finally {
+        setEditLoading(false);
+      }
+    },
+    [staffData, staffId, dateFilter, getPublicStaffById, editWageIncrement, addWageIncrement, updateIncrementError, addIncrementError]
+  );
 
   const handleEditStaff = async (formData) => {
     if (!staffData?._id) return;
@@ -124,7 +147,7 @@ const StaffDetail = ({ onBack, onDelete }) => {
     try {
       const result = await updateStaff(staffData._id, formData);
       if (result.success) {
-        getPublicStaffById(staffId); // Refresh all data
+        await getPublicStaffById(staffId, dateFilter.startDate, dateFilter.endDate);
         setShowEditModal(false);
       } else {
         setEditError(updateError || 'Failed to update staff');
@@ -140,7 +163,7 @@ const StaffDetail = ({ onBack, onDelete }) => {
     try {
       const result = await addStaffLeave(staffId, leaveData);
       if (result.success) {
-        getPublicStaffById(staffId); // Refresh all data
+        await getPublicStaffById(staffId, dateFilter.startDate, dateFilter.endDate);
         setShowLeaveForm(false);
         resetAddLeave();
       } else {
@@ -151,17 +174,20 @@ const StaffDetail = ({ onBack, onDelete }) => {
     }
   };
 
-  const isLoading = !!staffLoading || deleteLoading || updateLoading || editLoading;
+  const handleBack = () => {
+    navigate('/admin/staff');
+  };
+
+  const isLoading = staffLoading || deleteLoading || updateLoading || editLoading || addIncrementLoading || updateIncrementLoading;
 
   if (isLoading && !staffData) {
     return <LoadingSpinner message="Loading staff details..." />;
   }
 
   if (!staffData?.data) {
-    return <StaffNotFound onBack={onBack} />;
+    return <StaffNotFound onBack={handleBack} />;
   }
 
-  // Now it's safe to destructure from staffData.data
   const { staff, period, attendance, finances, wageInfo } = staffData.data;
   const salaryDetails = {
     currentDailyWage: staff.currentDailyWage,
@@ -180,18 +206,19 @@ const StaffDetail = ({ onBack, onDelete }) => {
   };
   const safeLeaveData = Array.isArray(attendance?.leaveData) ? attendance.leaveData : [];
   const safeAdvances = Array.isArray(finances?.advances) ? finances.advances : [];
-  console.log("safeLeaveData", attendance);
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <BackButton onBack={onBack} />
+        <BackButton onBack={handleBack} />
         <StaffInfoCard
           staffData={basicStaff}
           salaryDetails={salaryDetails}
           onDelete={handleDeleteStaff}
           onEditWage={handleEditWage}
-          onEdit={() => { console.log('Edit Staff button clicked'); setShowEditModal(true); }}
+          onEdit={() => {
+            setShowEditModal(true);
+          }}
         />
         <StaffTabs
           activeTab={activeTab}
@@ -199,6 +226,9 @@ const StaffDetail = ({ onBack, onDelete }) => {
           showFilter={showFilter}
           setShowFilter={setShowFilter}
           handleDateFilterChange={setDateFilter}
+          leavesLoading={addLeaveLoading || deleteLeaveLoading}
+          advancesLoading={isLoading}
+          incrementLoading={addIncrementLoading || updateIncrementLoading}
         />
         <div className="bg-white rounded-xl shadow-md border p-4 sm:p-6">
           {activeTab === 'leaves' && (
@@ -208,7 +238,7 @@ const StaffDetail = ({ onBack, onDelete }) => {
               leavesLoading={isLoading}
               showLeaveForm={showLeaveForm}
               setShowLeaveForm={setShowLeaveForm}
-              handleRefreshLeaves={() => getPublicStaffById(staff?._id)}
+              handleRefreshLeaves={() => getPublicStaffById(staff?._id, dateFilter.startDate, dateFilter.endDate)}
               handleLeaveSubmit={handleLeaveSubmit}
               addLeaveLoading={addLeaveLoading}
               resetAddLeave={resetAddLeave}
@@ -221,18 +251,20 @@ const StaffDetail = ({ onBack, onDelete }) => {
               staffId={staff?._id}
               staffAdvances={safeAdvances}
               advancesLoading={isLoading}
-              handleRefreshAdvances={() => getPublicStaffById(staff?._id)}
+              handleRefreshAdvances={() => getPublicStaffById(staff?._id, dateFilter.startDate, dateFilter.endDate)}
             />
           )}
           {activeTab === 'increments' && (
             <StaffIncrementsTab
               incrementHistory={wageInfo?.wageIncrements || []}
-              incrementLoading={isLoading}
+              incrementLoading={addIncrementLoading || updateIncrementLoading}
               incrementsThisMonth={wageInfo?.wageIncrementsThisMonth || []}
+              currentWage={staff.currentDailyWage}
+              onEditWage={handleEditWage}
+              getPublicStaffById={getPublicStaffById}
             />
           )}
         </div>
-        {/* Edit Staff Modal */}
         {showEditModal && (
           <AddStaff
             mode="edit"
@@ -249,9 +281,7 @@ const StaffDetail = ({ onBack, onDelete }) => {
 };
 
 StaffDetail.defaultProps = {
-  onBack: () => console.log('Back clicked'),
-  onDelete: (id) => console.log('Delete clicked', id)
+  onBack: null,
 };
 
 export default StaffDetail;
-

@@ -1,12 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
+import AddWageIncrementForm from '../../../components/admin/forms/AddWageIncrementForm';
 
-const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThisMonth = [] }) => {
+const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThisMonth = [], currentWage, onEditWage, getPublicStaffById }) => {
+  const [showForm, setShowForm] = useState(false);
+  const [editIncrement, setEditIncrement] = useState(null);
+
+  const safeIncrementHistory = Array.isArray(incrementHistory) ? incrementHistory : [];
+  const safeIncrementsThisMonth = Array.isArray(incrementsThisMonth) ? incrementsThisMonth : [];
+
+  const handleAddClick = () => {
+    setEditIncrement(null);
+    setShowForm(true);
+  };
+
+  const handleEditClick = (increment) => {
+    setEditIncrement(increment);
+    setShowForm(true);
+  };
+
+  const handleFormSubmit = (wageData) => {
+    setShowForm(false);
+    setEditIncrement(null);
+    onEditWage(wageData); // Trigger refresh with wage data
+  };
+
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-4">Wage Increment History</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">Wage Increment History</h2>
+        <button
+          onClick={handleAddClick}
+          className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
+        >
+          Add Increment
+        </button>
+      </div>
 
       {/* This Month's Increments Section */}
-      {incrementsThisMonth.length > 0 && (
+      {safeIncrementsThisMonth.length > 0 && (
         <div className="mb-8">
           <h3 className="text-md font-semibold mb-2">This Month's Increments</h3>
           <div className="overflow-x-auto">
@@ -18,10 +49,11 @@ const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThis
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">New Wage</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Increment Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {incrementsThisMonth.map((increment, index) => (
+                {safeIncrementsThisMonth.map((increment, index) => (
                   <tr key={increment._id || increment.id || index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(increment.effectiveDate).toLocaleDateString()}
@@ -38,6 +70,14 @@ const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThis
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {increment.reason || 'N/A'}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => handleEditClick(increment)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -45,6 +85,7 @@ const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThis
           </div>
         </div>
       )}
+
       {incrementLoading ? (
         <div className="flex items-center justify-center py-8">
           <svg
@@ -69,31 +110,22 @@ const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThis
           </svg>
           <span>Loading increment history...</span>
         </div>
-      ) : incrementHistory && incrementHistory.length > 0 ? (
+      ) : safeIncrementHistory.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Previous Wage
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  New Wage
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Increment Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Notes
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Previous Wage</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">New Wage</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Increment Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {incrementHistory.map((increment, index) => (
-                <tr key={index}>
+              {safeIncrementHistory.map((increment, index) => (
+                <tr key={increment._id || index}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(increment.effectiveDate || increment.date).toLocaleDateString()}
                   </td>
@@ -109,6 +141,14 @@ const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThis
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {increment.reason || increment.notes || 'N/A'}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => handleEditClick(increment)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -118,6 +158,18 @@ const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThis
         <div className="text-center py-8 text-gray-500">
           No wage increment history found for this staff member.
         </div>
+      )}
+
+      {showForm && (
+        <AddWageIncrementForm
+          staffId={incrementHistory[0]?.staffId}
+          currentWage={currentWage}
+          onClose={() => setShowForm(false)}
+          onSubmit={handleFormSubmit}
+          mode={editIncrement ? 'edit' : 'add'}
+          incrementData={editIncrement}
+          getPublicStaffById={getPublicStaffById}
+        />
       )}
     </div>
   );

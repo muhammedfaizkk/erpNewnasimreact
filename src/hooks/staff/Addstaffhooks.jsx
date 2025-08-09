@@ -246,7 +246,54 @@ export const useAddWageIncrement = () => {
   return { loading, error, addWageIncrement, reset };
 };
 
-// Hook for getting wage increment history
+export const useEditWageIncrement = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const editWageIncrement = useCallback(async (staffId, incrementId, incrementData) => {
+    console.log('Submitting edit increment data:', incrementData);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axiosInstance.put(`/staff/${staffId}/editWageIncrement/${incrementId}`, incrementData);
+      console.log('API response:', response);
+
+      const responseData = response.data;
+
+      if (responseData.success) {
+        toast.success(responseData.message || 'Wage increment updated successfully');
+        return {
+          success: true,
+          wageIncrement: responseData.data.incrementRecord,
+          message: responseData.message
+        };
+      } else {
+        setError({ message: responseData.message || 'Failed to update wage increment' });
+        toast.error(responseData.message || 'Failed to update wage increment');
+        return { success: false };
+      }
+    } catch (err) {
+      console.error('API error:', err.response?.data || err.message);
+      setError({
+        message: 'Failed to update wage increment',
+        details: err.response?.data?.message || err.message,
+      });
+      toast.error(err.response?.data?.message || err.message || 'Failed to update wage increment');
+      return { success: false };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const reset = () => {
+    setError(null);
+  };
+
+  return { loading, error, editWageIncrement, reset };
+};
+
+
 export const useGetWageIncrementHistory = () => {
   const [incrementHistory, setIncrementHistory] = useState([]);
   const [loading, setLoading] = useState(false);

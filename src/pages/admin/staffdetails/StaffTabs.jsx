@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, DollarSign, Filter } from 'lucide-react';
-import StaffViewFilter from '../../../components/admin/filters/StaffViewFilter'
+import StaffViewFilter from '../../../components/admin/filters/StaffViewFilter';
+
 const StaffTabs = ({ 
   activeTab, 
   setActiveTab, 

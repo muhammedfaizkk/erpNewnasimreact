@@ -110,7 +110,7 @@ export default function StaffAdvancePayment({
   return (
     <div className="space-y-4">
       {/* Header with Add Button */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-4 p-3 p-sm-0">
         <h3 className="text-lg font-semibold">Advance Payments</h3>
         <button
           onClick={() => setShowAddForm(true)}

@@ -57,12 +57,16 @@ const SiteCard = ({
 
       <div className="mt-4 flex justify-end space-x-2">
         <button
-          onClick={() => onViewClick(site)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewClick(site);
+          }}
           className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors flex items-center gap-1"
         >
           <Eye className="w-4 h-4" />
           View
         </button>
+
         <button
           onClick={() => onEditClick(site)}
           className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600 transition-colors flex items-center gap-1"

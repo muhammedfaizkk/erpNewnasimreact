@@ -26,13 +26,13 @@ const StaffIncrementsTab = ({ incrementHistory, incrementLoading, incrementsThis
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Wage Increment History</h2>
+      <div className="flex justify-between items-center mb-4 p-3 p-sm-0">
+        <h2 className="text-lg font-semibold">Wage History</h2>
         <button
           onClick={handleAddClick}
           className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700"
         >
-          Add Increment
+          Add
         </button>
       </div>
 

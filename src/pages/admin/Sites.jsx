@@ -386,7 +386,7 @@ const Sites = () => {
                   <SiteCard
                     key={site._id || site.id}
                     site={site}
-                    onViewClick={() => setSelectedSite(site)}
+                    onViewClick={handleView}
                     onEditClick={() => handleEdit(site)}
                     onDeleteClick={() => handleDelete(site)}
                     formatCurrency={formatCurrency}

@@ -6,7 +6,6 @@ import Profile from '../pages/admin/Profile';
 import Sites from '../pages/admin/Sites';
 import Staffs from '../pages/admin/Staffas';
 import Genaral from '../pages/admin/Genaral';
-import Sitedetailpage from '../pages/Sitedetailpage';
 import SiteDetailView from '../components/admin/SiteDetailView';
 import StaffDetail from '../pages/admin/StaffDetail';
 import MonthlyReportPage from '../pages/admin/MonthlyReportPage';
@@ -16,10 +15,6 @@ import ProtectedRoute from "../Protected/ProtectedRoute";
 
 const Admin = () => (
     <>
-
-
-
-
         <Route path="/" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="admin/profile" element={<Profile />} />
@@ -28,7 +23,6 @@ const Admin = () => (
             <Route path="admin/staffs" element={<Staffs />} />
             <Route path="site/view/:id" element={<SiteDetailView />} />
             <Route path="admin/genaral" element={<Genaral />} />
-            <Route path="admin/site/details/:siteId" element={<Sitedetailpage />} />
             <Route path="sitedetailview/:siteId" element={<SiteDetailView />} />
             <Route path="staffdetail/:staffId" element={<StaffDetail />} />
             <Route path="admin/reports" element={<MonthlyReportPage />} />

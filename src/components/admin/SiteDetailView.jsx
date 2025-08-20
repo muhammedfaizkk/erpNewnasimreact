@@ -21,7 +21,7 @@ import SiteAttendanceTable from '../../components/admin/tables/Siteattendancetab
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGetSiteOverview } from '../../hooks/site/Sitehooks';
 
-export default function SiteDetailView({ onBack }) {
+export default function SiteDetailView() {
   const { siteId } = useParams();
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
@@ -34,7 +34,9 @@ export default function SiteDetailView({ onBack }) {
   const [localStartDate, setLocalStartDate] = useState('');
   const [localEndDate, setLocalEndDate] = useState('');
   const { overview, loading, error, getSiteOverview } = useGetSiteOverview();
-
+  const onBack = () => {
+    navigate('../admin/sites')
+  }
   useEffect(() => {
     if (siteId) {
       getSiteOverview(siteId, filters.startDate, filters.endDate);
@@ -152,8 +154,8 @@ export default function SiteDetailView({ onBack }) {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-medium transition-colors ${hasActiveFilters()
-                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
               <Filter className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />

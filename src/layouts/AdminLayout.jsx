@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/admin/layout/Sidebar';
 import DashboardHome from '../components/admin/layout/DashboardHome';
-import { FiMenu, FiX } from 'react-icons/fi';
+import { FiMenu, FiX, FiHome, FiUser } from 'react-icons/fi';
 
 function AdminLayout() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -39,8 +39,8 @@ function AdminLayout() {
     }, [mobileMenuOpen]);
 
     return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden relative">
-            {/* Sidebar - desktop and mobile slide-in */}
+        <div className="flex h-screen bg-gray-50 overflow-hidden relative pb-14">
+            {/* Sidebar */}
             <div
                 ref={sidebarRef}
                 className={`fixed top-0 left-0 h-full w-64 z-40 bg-white shadow-md transition-transform transform
@@ -50,7 +50,7 @@ function AdminLayout() {
                 <Sidebar isOpen={mobileMenuOpen} onClose={closeMobileMenu} />
             </div>
 
-            {/* Mobile Header - only on mobile */}
+            {/* Mobile Header */}
             <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white shadow">
                 <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -81,16 +81,35 @@ function AdminLayout() {
                         >
                             <FiX className="h-6 w-6" />
                         </button>
-                       <DashboardHome onClose={() => setShowDashboardHome(false)} />
-
+                        <DashboardHome onClose={() => setShowDashboardHome(false)} />
                     </div>
                 </div>
-
             )}
 
-            {/* Main Content */}
-            <div className="flex-1 ml-0 mt-14 md:mt-0 h-full overflow-y-auto p-4">
+            <div className="flex-1 ml-0 mt-14 md:mt-0 h-full overflow-y-auto p-4 pb-24">
                 <Outlet />
+            </div>
+
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-md border-t z-50">
+                <div className="flex justify-around items-center py-2">
+                    {/* Home */}
+                    <button
+                        onClick={() => navigate('/admin')}
+                        className="flex flex-col items-center text-gray-600 hover:text-[rgb(19,121,221)] text-sm"
+                    >
+                        <FiHome className="h-5 w-5 mb-1" />
+                        Home
+                    </button>
+
+                    {/* Profile */}
+                    <button
+                        onClick={() => navigate('/admin/profile')}
+                        className="flex flex-col items-center text-gray-600 hover:text-[rgb(19,121,221)] text-sm"
+                    >
+                        <FiUser className="h-5 w-5 mb-1" />
+                        Profile
+                    </button>
+                </div>
             </div>
         </div>
     );

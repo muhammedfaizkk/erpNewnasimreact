@@ -5,10 +5,10 @@ import StaffCards from '../../components/admin/cards/StaffCards';
 import StaffDetail from '../../pages/admin/StaffDetail';
 import { useNavigate } from 'react-router-dom';
 import AddStaff from '../../components/admin/forms/AddStaff';
-import { 
-  useGetAllStaff, 
-  useAddStaff, 
-  useDeleteStaff 
+import {
+  useGetAllStaff,
+  useAddStaff,
+  useDeleteStaff
 } from '../../hooks/staff/Addstaffhooks';
 
 const StaffManagement = () => {
@@ -26,7 +26,7 @@ const StaffManagement = () => {
     getAllStaff();
   }, [getAllStaff]);
 
-  
+
   useEffect(() => {
     let filtered = staff || [];
 
@@ -49,9 +49,9 @@ const StaffManagement = () => {
     setFilteredStaff(filtered);
   }, [staff, filterCriteria]);
 
- const handleStaffClick = (id) => {
-  navigate(`/staffdetail/${id}`);
-};
+  const handleStaffClick = (id) => {
+    navigate(`/staffdetail/${id}`);
+  };
 
   const handleBackToList = () => {
     setCurrentView('list');
@@ -120,7 +120,7 @@ const StaffManagement = () => {
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">Error loading staff members: {error.message}</p>
-          <button 
+          <button
             onClick={getAllStaff}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
@@ -133,41 +133,43 @@ const StaffManagement = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 px-3 py-4 sm:px-4 md:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Management</h1>
-            <p className="text-gray-600">
+        {/* Header */}
+        <div className="flex  justify-between sm:items-center mb-4 sm:mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
+              Staffs
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">
               {filteredStaff.length} of {staff.length} staff members
             </p>
           </div>
+
           <button
             onClick={() => setShowAddStaff(true)}
             disabled={addLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-4 py-0 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             {addLoading ? 'Adding...' : 'Add Staff'}
           </button>
+
         </div>
 
-        {/* Filter Component */}
-        <div className="mb-6">
-          <StaffFilter 
+        <div className="mb-4 sm:mb-6">
+          <StaffFilter
             onFilterChange={handleFilterChange}
             onSearch={handleSearch}
-            departments={[...new Set(staff.map(member => member.role))]} // Get unique roles
+            departments={[...new Set(staff.map(member => member.role))]}
           />
         </div>
 
-        
         <StaffCards
           staff={filteredStaff}
           onStaffClick={handleStaffClick}
           loading={loading}
         />
 
-        {/* Add Staff Modal */}
         {showAddStaff && (
           <AddStaff
             onClose={() => setShowAddStaff(false)}
@@ -176,10 +178,10 @@ const StaffManagement = () => {
             error={addError}
           />
         )}
-
       </div>
     </div>
   );
+
 };
 
 export default StaffManagement;

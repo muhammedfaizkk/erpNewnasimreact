@@ -208,7 +208,7 @@ const StaffDetail = ({ onBack }) => {
   const safeAdvances = Array.isArray(finances?.advances) ? finances.advances : [];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+    <div className="min-h-screen bg-gray-50 p-0 sm:p-6">
       <div className="max-w-7xl mx-auto">
         <BackButton onBack={handleBack} />
         <StaffInfoCard
@@ -230,7 +230,7 @@ const StaffDetail = ({ onBack }) => {
           advancesLoading={isLoading}
           incrementLoading={addIncrementLoading || updateIncrementLoading}
         />
-        <div className="bg-white rounded-xl shadow-md border p-4 sm:p-6">
+        <div className="bg-white rounded-xl shadow-md border p-1 sm:p-6">
           {activeTab === 'leaves' && (
             <StaffLeavesTab
               staffId={staff?._id}

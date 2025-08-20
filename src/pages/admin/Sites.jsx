@@ -10,6 +10,7 @@ import { useGetAllSites, useAddSite, useEditSite, useDeleteSite } from '../../ho
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useNavigate } from 'react-router-dom';
+import SiteCardSkeleton from '../../skeletons/SiteCardSkeleton';
 
 const Sites = () => {
   const [selectedSite, setSelectedSite] = useState(null);
@@ -153,15 +154,6 @@ const Sites = () => {
       );
     }
 
-    // Debug logging (remove in production)
-    console.log('Filter Debug:', {
-      totalSites: sites.length,
-      sitesOnly: sites.filter(s => s.type === 'Site').length,
-      filteredCount: filtered.length,
-      statusFilter,
-      searchTerm: searchTerm || 'none',
-      sampleSite: sites[0] // To check data structure
-    });
 
     return filtered;
   }, [sites, statusFilter, searchTerm]);
@@ -289,7 +281,7 @@ const Sites = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Sticky Header */}
+
       <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="px-4 py-4">
           <div className="flex justify-between items-center">
@@ -361,9 +353,8 @@ const Sites = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading sites...</span>
+          <div>
+            <SiteCardSkeleton />
           </div>
         )}
 

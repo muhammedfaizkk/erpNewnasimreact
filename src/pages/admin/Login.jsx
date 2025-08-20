@@ -1,17 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { useSignin } from '../../hooks/profile/Profileapi';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const navigate = useNavigate()
+    const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
 
     const { signin, loading, error } = useSignin();
+
+    useEffect(() => {
+        // Load remembered email if available
+        const remembered = localStorage.getItem('rememberedEmail');
+        if (remembered) setEmail(remembered);
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,6 +28,8 @@ const Login = () => {
             toast.success('Login successful!');
             if (rememberMe) {
                 localStorage.setItem('rememberedEmail', email);
+            } else {
+                localStorage.removeItem('rememberedEmail');
             }
             navigate('/');
         } else {
@@ -29,15 +37,16 @@ const Login = () => {
         }
     };
 
-
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-md">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-2 sm:px-4">
+            <div className="w-full max-w-md sm:max-w-sm p-6 sm:p-8 space-y-6 bg-white rounded-xl shadow-md">
+                {/* Header */}
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
-                    <p className="mt-2 text-gray-600">Sign in to your account</p>
+                    <h1 className="text-3xl sm:text-2xl font-bold text-gray-900">Welcome back</h1>
+                    <p className="mt-2 text-gray-600 text-sm sm:text-base">Sign in to your account</p>
                 </div>
 
+                {/* Form */}
                 <form className="space-y-6" onSubmit={handleSubmit}>
                     {/* Email Input */}
                     <div>
@@ -56,7 +65,7 @@ const Login = () => {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                 placeholder="you@example.com"
                             />
                         </div>
@@ -79,7 +88,7 @@ const Login = () => {
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                                 placeholder="••••••••"
                             />
                             <button
@@ -96,30 +105,10 @@ const Login = () => {
                         </div>
                     </div>
 
-                    {/* Remember Me and Forgot */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <input
-                                id="remember-me"
-                                name="remember-me"
-                                type="checkbox"
-                                checked={rememberMe}
-                                onChange={(e) => setRememberMe(e.target.checked)}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                                Remember me
-                            </label>
-                        </div>
+                    {/* Remember Me + Forgot */}
+                    
 
-                        <div className="text-sm">
-                            <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                                Forgot password?
-                            </a>
-                        </div>
-                    </div>
-
-                    {/* Error Toast (fallback) */}
+                    {/* Error Message */}
                     {error && <p className="text-sm text-red-600">{error}</p>}
 
                     {/* Submit Button */}
@@ -127,7 +116,7 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm sm:text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
                             {loading ? 'Signing in...' : 'Sign in'}
                         </button>

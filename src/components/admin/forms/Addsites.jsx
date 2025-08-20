@@ -44,13 +44,20 @@ const Addsites = ({ mode = 'add', site = null, onClose, onSubmit, loading = fals
     }
   }, [mode, site]);
 
-  // FIXED: Prevent background scrolling with proper cleanup
+  // ✅ FIXED: Prevent background scrolling (desktop + mobile)
   useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.overflowY = 'hidden';
+    document.body.style.width = '100%';
+
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.overflowY = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
@@ -59,11 +66,9 @@ const Addsites = ({ mode = 'add', site = null, onClose, onSubmit, loading = fals
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // FIXED: Form submission with proper error handling
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
+
     if (!formData.name.trim() || !formData.place.trim() || !formData.contactNumber.trim()) {
       return;
     }
@@ -73,7 +78,6 @@ const Addsites = ({ mode = 'add', site = null, onClose, onSubmit, loading = fals
       budget: Number(formData.budget),
     };
 
-    // Add id for edit mode - handle both _id and id
     if (mode === 'edit' && site) {
       submitData.id = site.id || site._id;
     }
@@ -85,7 +89,6 @@ const Addsites = ({ mode = 'add', site = null, onClose, onSubmit, loading = fals
     }
   };
 
-  // FIXED: Improved close handler to prevent event bubbling
   const handleClose = (e) => {
     if (e) {
       e.preventDefault();
@@ -94,7 +97,6 @@ const Addsites = ({ mode = 'add', site = null, onClose, onSubmit, loading = fals
     onClose();
   };
 
-  // FIXED: Handle backdrop click properly
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
       handleClose();
@@ -106,14 +108,17 @@ const Addsites = ({ mode = 'add', site = null, onClose, onSubmit, loading = fals
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 overflow-y-auto"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mt-10 max-h-screen overflow-y-auto">
+      <div
+        id="add-site-modal"
+        className="bg-white rounded-lg shadow-xl w-full max-w-md mt-10 max-h-screen overflow-y-auto"
+      >
         <div className="flex justify-between items-center border-b p-4 sticky top-0 bg-white z-10">
           <h3 className="text-lg font-semibold">
             {mode === 'edit' ? 'Edit Site' : 'Add New Site'}
           </h3>
-          <button 
+          <button
             type="button"
-            onClick={handleClose} 
+            onClick={handleClose}
             disabled={loading}
             className="text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed p-1"
           >
@@ -251,7 +256,7 @@ const Addsites = ({ mode = 'add', site = null, onClose, onSubmit, loading = fals
               </select>
             </div>
 
-            {/* Work Description — Span full width */}
+            {/* Work Description */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Work Description*</label>
               <textarea

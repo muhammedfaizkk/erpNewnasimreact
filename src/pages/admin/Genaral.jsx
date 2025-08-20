@@ -10,6 +10,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import SiteDetailView from '../../components/admin/SiteDetailView';
 import { useNavigate } from 'react-router-dom';
 import SiteFilter from '../../components/admin/filters/SiteFilter';
+import SiteCardSkeleton from '../../skeletons/SiteCardSkeleton';
 
 const Genaral = () => {
   const [selectedSite, setSelectedSite] = useState(null);
@@ -363,9 +364,8 @@ const Genaral = () => {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading sites...</span>
+          <div>
+            <SiteCardSkeleton />
           </div>
         )}
 
@@ -394,6 +394,7 @@ const Genaral = () => {
                     formatCurrency={formatCurrency}
                     getStatusColor={getStatusColor}
                     getStatusIcon={getStatusIcon}
+                    formatDate={formatDate}
                     calculateBalance={calculateBalance}
                   />
                 ))}

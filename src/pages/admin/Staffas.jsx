@@ -10,6 +10,7 @@ import {
   useAddStaff,
   useDeleteStaff
 } from '../../hooks/staff/Addstaffhooks';
+import StaffCardsSkeleton from '../../skeletons/StaffCardSkeleton';
 
 const StaffManagement = () => {
   const [currentView, setCurrentView] = useState('list');
@@ -105,11 +106,8 @@ const StaffManagement = () => {
   // Loading state
   if (loading && !staff.length) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading staff members...</p>
-        </div>
+      <div>
+        <StaffCardsSkeleton />
       </div>
     );
   }
@@ -149,7 +147,7 @@ const StaffManagement = () => {
           <button
             onClick={() => setShowAddStaff(true)}
             disabled={addLoading}
-            className="px-4 py-0 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             {addLoading ? 'Adding...' : 'Add Staff'}
           </button>

@@ -39,7 +39,7 @@ function AdminLayout() {
     }, [mobileMenuOpen]);
 
     return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden relative pb-14">
+        <div className="flex h-screen bg-gray-50 overflow-hidden relative pb-14 sm:pb-0">
             {/* Sidebar */}
             <div
                 ref={sidebarRef}
@@ -94,7 +94,7 @@ function AdminLayout() {
                 <div className="flex justify-around items-center py-2">
                     {/* Home */}
                     <button
-                        onClick={() => navigate('/admin')}
+                        onClick={() => navigate('/')}
                         className="flex flex-col items-center text-gray-600 hover:text-[rgb(19,121,221)] text-sm"
                     >
                         <FiHome className="h-5 w-5 mb-1" />

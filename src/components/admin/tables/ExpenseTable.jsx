@@ -77,18 +77,15 @@ export default function ExpenseTable({ data = [], onDataChange, siteId }) {
                 <div className="flex items-center space-x-4">
                     <h3 className="text-lg font-semibold flex items-center">
                         <TrendingDown className="w-5 h-5 mr-2 text-red-500" />
-                        Expense Management
+                        Expense
                     </h3>
-                    <div className="text-sm text-gray-500">
-                        Total: {formatCurrency(data.reduce((sum, i) => sum + (i.amount || 0), 0))}
-                    </div>
                 </div>
                 <button
                     onClick={() => setShowForm(true)}
                     className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
                 >
                     <Plus className="w-4 h-4" />
-                    <span>Add Expense</span>
+                    <span>Add</span>
                 </button>
             </div>
 

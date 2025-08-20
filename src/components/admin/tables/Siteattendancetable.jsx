@@ -96,11 +96,9 @@ export default function SiteAttendanceTable({ siteId }) {
         <div className="flex items-center space-x-4">
           <h3 className="text-lg font-semibold flex items-center">
             <CalendarCheck2 className="w-5 h-5 mr-2 text-blue-600" />
-            Site Attendance
+            Attendance
           </h3>
-          <div className="text-sm text-gray-500">
-            Total Records: {filteredData.length}
-          </div>
+
         </div>
 
         <button
@@ -108,7 +106,7 @@ export default function SiteAttendanceTable({ siteId }) {
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
-          <span>Mark Attendance</span>
+          <span>Mark</span>
         </button>
       </div>
 

@@ -84,18 +84,16 @@ export default function IncomeTable({ data = [], onDataChange, siteId }) {
                 <div className="flex items-center space-x-4">
                     <h3 className="text-lg font-semibold flex items-center">
                         <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
-                        Income Management
+                        Income
                     </h3>
-                    <div className="text-sm text-gray-500">
-                        Total: {formatCurrency(filteredIncomes.reduce((sum, i) => sum + (i.amount || 0), 0))}
-                    </div>
+
                 </div>
                 <button
                     onClick={() => setShowForm(true)}
                     className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
                 >
                     <Plus className="w-4 h-4" />
-                    <span>Add Income</span>
+                    <span>Add</span>
                 </button>
             </div>
 

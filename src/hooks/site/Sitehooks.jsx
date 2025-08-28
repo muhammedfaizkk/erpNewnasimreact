@@ -197,6 +197,8 @@ export const useGetAllSites = () => {
 };
 
 
+
+
 export const useGetAllGenaral = () => {
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -295,6 +297,7 @@ export const useGetAllGenaral = () => {
     removeSiteFromList,
   };
 };
+
 
 
 export const useGetSiteById = () => {

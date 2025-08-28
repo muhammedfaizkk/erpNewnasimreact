@@ -12,9 +12,11 @@ const SiteTable = memo(({
   getStatusColor,
   getStatusIcon,
   loading,
-  calculateBalance
+  calculateBalance,
+  page,
+  setPage,
+  totalPages,
 }) => {
-  
   const handleActionClick = (e, action, site) => {
     e.stopPropagation();
     action(site);
@@ -69,7 +71,7 @@ const SiteTable = memo(({
               sites.map((site) => {
                 const balance = calculateBalance(site);
                 const siteId = site.id || site._id;
-                
+
                 return (
                   <tr
                     key={siteId}
@@ -90,14 +92,14 @@ const SiteTable = memo(({
                         </div>
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 flex items-center">
                         <Phone className="w-3 h-3 mr-2 text-green-500 flex-shrink-0" />
                         <span className="truncate">{site.contactNumber || 'No contact'}</span>
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         <div className="text-gray-900">
@@ -108,7 +110,7 @@ const SiteTable = memo(({
                         </div>
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4">
                       <div className="text-sm space-y-1">
                         <div className="text-blue-600 font-medium">
@@ -125,7 +127,7 @@ const SiteTable = memo(({
                         </div>
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4">
                       <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(site.status)}`}>
                         {getStatusIcon(site.status)}
@@ -134,7 +136,7 @@ const SiteTable = memo(({
                         </span>
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
@@ -145,7 +147,7 @@ const SiteTable = memo(({
                           <Eye className="w-4 h-4" />
                           <span className="hidden sm:inline">View</span>
                         </button>
-                        
+
                         <button
                           onClick={(e) => handleActionClick(e, onEdit, site)}
                           className="bg-yellow-500 text-white px-2 py-1 rounded text-sm hover:bg-yellow-600 transition-colors flex items-center gap-1 disabled:opacity-50"
@@ -154,7 +156,7 @@ const SiteTable = memo(({
                           <Pencil className="w-4 h-4" />
                           <span className="hidden sm:inline">Edit</span>
                         </button>
-                        
+
                         <button
                           onClick={(e) => handleActionClick(e, onDelete, site)}
                           className="bg-red-500 text-white px-2 py-1 rounded text-sm hover:bg-red-600 transition-colors flex items-center gap-1 disabled:opacity-50"
@@ -171,6 +173,38 @@ const SiteTable = memo(({
             )}
           </tbody>
         </table>
+
+        {/* Pagination Controls */}
+        {/* <div className="flex justify-center items-center space-x-1 my-6">
+          <button
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Prev
+          </button>
+          {[...Array(totalPages)].map((_, index) => {
+            const pageNum = index + 1;
+            return (
+              <button
+                key={pageNum}
+                onClick={() => setPage(pageNum)}
+                className={`px-3 py-1 border rounded ${
+                  page === pageNum ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div> */}
       </div>
     </div>
   );

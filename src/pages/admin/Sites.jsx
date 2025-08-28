@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Clock, CheckCircle, AlertCircle, XCircle, Plus } from 'lucide-react';
 import SiteCard from '../../components/admin/cards/SiteCard';
 import SiteTable from '../../components/admin/tables/SiteTable';
-import SiteDetailView from '../../components/admin/SiteDetailView';
 import SiteFilter from '../../components/admin/filters/SiteFilter';
 import Addsites from '../../components/admin/forms/Addsites';
 import ConfirmationModal from '../../components/admin/ConfirmationModal';
@@ -18,40 +17,48 @@ const Sites = () => {
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
 
   const [isSiteModalOpen, setIsSiteModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [currentSite, setCurrentSite] = useState(null);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+
   const {
     getAllSites,
     loading: loadingSites,
     error: sitesError,
     sites,
-    count,
-    reset: resetSites
+    totalCount,
+    page,
+    setPage,
+    totalPages,
+    reset: resetSites,
+    addSiteToList,
+    updateSiteInList,
+    removeSiteFromList,
   } = useGetAllSites();
 
   const { addSite, loading: adding, error: addError } = useAddSite();
   const { editSite, loading: editing, error: editError } = useEditSite();
   const { deleteSite, loading: deleting, error: deleteError } = useDeleteSite();
 
-  // Combined loading and error states
   const loading = loadingSites || adding || editing || deleting;
   const error = sitesError || addError || editError || deleteError;
 
-  // Memoized helper functions to prevent unnecessary re-renders
   const getStatusColor = useCallback((status) => {
     switch (status?.toLowerCase()) {
       case 'active':
-      case 'on going': return 'text-green-600 bg-green-100';
-      case 'completed': return 'text-blue-600 bg-blue-100';
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      case 'cancelled': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'on going':
+        return 'text-green-600 bg-green-100';
+      case 'completed':
+        return 'text-blue-600 bg-blue-100';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'cancelled':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   }, []);
 
@@ -75,48 +82,69 @@ const Sites = () => {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
     }).format(amount || 0);
   }, []);
 
   const formatDate = useCallback((dateString) => {
-    return dateString ? new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    }) : 'N/A';
+    return dateString
+      ? new Date(dateString).toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      : 'N/A';
   }, []);
 
   const calculateBalance = useCallback((site) => {
     return (site?.totalIncome || 0) - (site?.totalExpense || 0);
   }, []);
 
-  // Load sites function with better error handling
   const loadSites = useCallback(async () => {
     try {
-      await getAllSites(); // fetch all
+      const params = {
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        type: 'Site',
+        page: page, // Make sure page is included
+        limit: 10, // Make sure limit is included
+      };
+      if (searchTerm && searchTerm.trim()) {
+        params.search = searchTerm.trim();
+      }
+      await getAllSites(params);
     } catch (err) {
       console.error('Error loading sites:', err);
       toast.error('Failed to load sites');
     }
-  }, [getAllSites]);
-  const handleView = useCallback((site) => {
-    navigate(`/sitedetailview/${site.id || site._id}`);
-  }, [navigate]);
+  }, [getAllSites, statusFilter, searchTerm, page]); // Add page to dependencies
+
+  const handleView = useCallback(
+    (site) => {
+      navigate(`/sitedetailview/${site.id || site._id}`);
+    },
+    [navigate]
+  );
+
   useEffect(() => {
     loadSites();
-  }, []);
+  }, [loadSites]); // This will trigger when page changes too
 
-  // Handle status filter changes without full reload
-  const handleStatusFilterChange = useCallback((status) => {
-    setStatusFilter(status);
-  }, []);
+  const handleStatusFilterChange = useCallback(
+    (status) => {
+      setStatusFilter(status);
+      setPage(1); // Reset to first page when filter changes
+    },
+    [setPage]
+  );
 
-  const handleSearch = useCallback((term) => {
-    setSearchTerm(term.toLowerCase());
-  }, []);
+  const handleSearch = useCallback(
+    (term) => {
+      setSearchTerm(term.toLowerCase());
+      setPage(1); // Reset to first page when search changes
+    },
+    [setPage]
+  );
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       setIsMobileView(window.innerWidth < 768);
@@ -125,74 +153,24 @@ const Sites = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Memoized filtered sites to prevent unnecessary filtering
-  const filteredSites = useMemo(() => {
-    let filtered = sites.filter(site => site.type === 'Site');
-
-    // Apply status filter only if not 'all'
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(site => {
-        const siteStatus = site.status?.toLowerCase();
-        const filterStatus = statusFilter.toLowerCase();
-
-        // Handle special case for "On Going" which might be stored as "active" or "on going"
-        if (filterStatus === 'active') {
-          return siteStatus === 'active' || siteStatus === 'on going';
-        }
-
-        return siteStatus === filterStatus;
-      });
-    }
-
-    // Apply search filter
-    if (searchTerm && searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(site =>
-        site.name?.toLowerCase().includes(searchLower) ||
-        site.place?.toLowerCase().includes(searchLower) ||
-        site.contactNumber?.includes(searchTerm.trim())
-      );
-    }
-
-
-    return filtered;
-  }, [sites, statusFilter, searchTerm]);
-
-  // Paginate filtered sites
-  const paginatedSites = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
-    return filteredSites.slice(start, end);
-  }, [filteredSites, page, pageSize]);
-
-  const totalPages = Math.ceil(filteredSites.length / pageSize);
-
-  // Reset to page 1 if filters change and current page is out of range
-  useEffect(() => {
-    if (page > totalPages) setPage(1);
-  }, [filteredSites, totalPages]);
-
-  // Memoized statistics to prevent unnecessary calculations
   const statistics = useMemo(() => {
-    const sitesOnly = sites.filter(site => site.type === 'Site');
-
-    const totalCount = sitesOnly.length;
-    const activeCount = sitesOnly.filter(site => {
+    const sitesOnly = sites.filter((site) => site.type === 'Site');
+    const totalCountValue = totalCount;
+    const activeCount = sitesOnly.filter((site) => {
       const status = site.status?.toLowerCase();
       return status === 'active' || status === 'on going';
     }).length;
-    const pendingCount = sitesOnly.filter(s => s.status?.toLowerCase() === 'pending').length;
+    const pendingCount = sitesOnly.filter((s) => s.status?.toLowerCase() === 'pending').length;
     const totalBalance = sitesOnly.reduce((sum, site) => sum + calculateBalance(site), 0);
 
     return {
-      totalCount,
+      totalCount: totalCountValue,
       activeCount,
       pendingCount,
-      totalBalance
+      totalBalance,
     };
-  }, [sites, calculateBalance]);
+  }, [sites, totalCount, calculateBalance]);
 
-  // Site actions
   const handleAddNew = useCallback(() => {
     setModalMode('add');
     setCurrentSite(null);
@@ -216,8 +194,9 @@ const Sites = () => {
         const result = await deleteSite(currentSite.id || currentSite._id);
         if (result.success) {
           toast.success('Site deleted successfully');
-          // Refresh the current filter view
-          await loadSites();
+          removeSiteFromList(currentSite.id || currentSite._id);
+          // Reload sites to refresh pagination
+          loadSites();
         } else {
           toast.error(result.message || 'Failed to delete site');
         }
@@ -228,7 +207,7 @@ const Sites = () => {
     }
     setIsConfirmModalOpen(false);
     setCurrentSite(null);
-  }, [currentSite, deleteSite, loadSites]);
+  }, [currentSite, deleteSite, removeSiteFromList, loadSites]);
 
   const handleModalClose = useCallback(() => {
     setIsSiteModalOpen(false);
@@ -236,52 +215,93 @@ const Sites = () => {
     setModalMode('add');
   }, []);
 
-  const handleSubmitSite = useCallback(async (formData) => {
-    try {
-      // Date validation
-      const startDate = new Date(formData.startDate);
-      const dueDate = new Date(formData.dueDate);
+  const handleSubmitSite = useCallback(
+    async (formData) => {
+      try {
+        const startDate = new Date(formData.startDate);
+        const dueDate = new Date(formData.dueDate);
 
-      if (dueDate <= startDate) {
-        toast.error('Due date must be later than start date');
-        return;
+        if (dueDate <= startDate) {
+          toast.error('Due date must be later than start date');
+          return;
+        }
+
+        let result;
+        if (modalMode === 'add') {
+          const addData = {
+            ...formData,
+            totalIncome: 0,
+            totalExpense: 0,
+          };
+          result = await addSite(addData);
+          if (result.success) {
+            addSiteToList(result.site);
+            // Reload to refresh pagination
+            loadSites();
+          }
+        } else {
+          const editData = {
+            ...formData,
+            id: currentSite?.id || currentSite?._id,
+          };
+          result = await editSite(editData);
+          if (result.success) {
+            updateSiteInList(result.site);
+          }
+        }
+
+        if (result.success) {
+          toast.success(`Site ${modalMode === 'add' ? 'added' : 'updated'} successfully`);
+          handleModalClose();
+        } else {
+          toast.error(result.message || `Failed to ${modalMode === 'add' ? 'add' : 'update'} site`);
+        }
+      } catch (err) {
+        console.error('Submit error:', err);
+        toast.error(`Failed to ${modalMode === 'add' ? 'add' : 'update'} site: ${err.message}`);
       }
+    },
+    [modalMode, addSite, editSite, currentSite, handleModalClose, addSiteToList, updateSiteInList, loadSites]
+  );
 
-      let result;
-      if (modalMode === 'add') {
-        const addData = {
-          ...formData,
-          totalIncome: 0,
-          totalExpense: 0
-        };
-        result = await addSite(addData);
-      } else {
-        const editData = {
-          ...formData,
-          id: currentSite?.id || currentSite?._id
-        };
-        result = await editSite(editData);
-      }
+  // Render pagination controls component
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
 
-      if (result.success) {
-        toast.success(`Site ${modalMode === 'add' ? 'added' : 'updated'} successfully`);
-        // Refresh the sites list with current filter
-        await loadSites();
-        handleModalClose();
-      } else {
-        toast.error(result.message || `Failed to ${modalMode === 'add' ? 'add' : 'update'} site`);
-      }
-    } catch (err) {
-      console.error('Submit error:', err);
-      toast.error(`Failed to ${modalMode === 'add' ? 'add' : 'update'} site: ${err.message}`);
-    }
-  }, [modalMode, addSite, editSite, currentSite, loadSites, handleModalClose]);
-
-
+    return (
+      <div className="flex justify-center items-center space-x-1 my-6">
+        <button
+          onClick={() => setPage(page - 1)}
+          disabled={page === 1}
+          className="px-3 py-1 border rounded disabled:opacity-50"
+        >
+          Prev
+        </button>
+        {[...Array(totalPages)].map((_, index) => {
+          const pageNum = index + 1;
+          return (
+            <button
+              key={pageNum}
+              onClick={() => setPage(pageNum)}
+              className={`px-3 py-1 border rounded ${page === pageNum ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
+            >
+              {pageNum}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setPage(page + 1)}
+          disabled={page === totalPages}
+          className="px-3 py-1 border rounded disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-
       <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="px-4 py-4">
           <div className="flex justify-between items-center">
@@ -331,11 +351,9 @@ const Sites = () => {
                 <p className="text-sm text-red-700 font-medium">
                   {error.message || 'An error occurred'}
                 </p>
-                {error.errors && (
+                {error.details && (
                   <ul className="mt-1 text-sm text-red-600 list-disc pl-5">
-                    {Object.entries(error.errors).map(([field, message]) => (
-                      <li key={field}>{`${field}: ${message}`}</li>
-                    ))}
+                    <li>{error.details}</li>
                   </ul>
                 )}
               </div>
@@ -351,15 +369,9 @@ const Sites = () => {
           loading={loading}
         />
 
-        {/* Loading State */}
-        {loading && (
-          <div>
-            <SiteCardSkeleton />
-          </div>
-        )}
+        {loading && <SiteCardSkeleton />}
 
-        {/* No Results State */}
-        {!loading && filteredSites.length === 0 && (
+        {!loading && sites.length === 0 && (
           <div className="text-center py-8">
             <div className="text-gray-500 text-lg mb-2">No sites found</div>
             <div className="text-gray-400 text-sm">
@@ -368,77 +380,53 @@ const Sites = () => {
           </div>
         )}
 
-        {/* Results */}
-        {!loading && filteredSites.length > 0 && (
+        {!loading && sites.length > 0 && (
           <>
             {isMobileView ? (
-              <div className="grid grid-cols-1 gap-4 mt-4">
-                {paginatedSites.map(site => (
-                  <SiteCard
-                    key={site._id || site.id}
-                    site={site}
-                    onViewClick={handleView}
-                    onEditClick={() => handleEdit(site)}
-                    onDeleteClick={() => handleDelete(site)}
+              <>
+                <div className="grid grid-cols-1 gap-4 mt-4">
+                  {sites.map((site) => (
+                    <SiteCard
+                      key={site._id || site.id}
+                      site={site}
+                      onViewClick={handleView}
+                      onEditClick={() => handleEdit(site)}
+                      onDeleteClick={() => handleDelete(site)}
+                      formatCurrency={formatCurrency}
+                      getStatusColor={getStatusColor}
+                      getStatusIcon={getStatusIcon}
+                      formatDate={formatDate}
+                      calculateBalance={calculateBalance}
+                    />
+                  ))}
+                </div>
+                {renderPagination()}
+              </>
+            ) : (
+              <>
+                <div className="mt-4 bg-white rounded-lg shadow overflow-hidden">
+                  <SiteTable
+                    sites={sites}
+                    onRowClick={handleView}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    loading={loading}
                     formatCurrency={formatCurrency}
+                    formatDate={formatDate}
                     getStatusColor={getStatusColor}
                     getStatusIcon={getStatusIcon}
-                    formatDate={formatDate}
                     calculateBalance={calculateBalance}
+                    page={page}
+                    setPage={setPage}
+                    totalPages={totalPages}
                   />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 bg-white rounded-lg shadow overflow-hidden">
-                <SiteTable
-                  sites={paginatedSites}
-                  onRowClick={handleView}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  loading={loading}
-                  formatCurrency={formatCurrency}
-                  formatDate={formatDate}
-                  getStatusColor={getStatusColor}
-                  getStatusIcon={getStatusIcon}
-                  calculateBalance={calculateBalance}
-                />
-              </div>
-            )}
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center space-x-1 my-6">
-                <button
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
-                >
-                  Prev
-                </button>
-                {[...Array(totalPages)].map((_, index) => {
-                  const pageNum = index + 1;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setPage(pageNum)}
-                      className={`px-3 py-1 border rounded ${page === pageNum ? 'bg-blue-600 text-white' : 'hover:bg-gray-200'}`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page === totalPages}
-                  className="px-3 py-1 border rounded disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
+                </div>
+                {renderPagination()}
+              </>
             )}
           </>
         )}
 
-        {/* Site Modal */}
         {isSiteModalOpen && (
           <Addsites
             mode={modalMode}
@@ -450,7 +438,6 @@ const Sites = () => {
           />
         )}
 
-        {/* Confirmation Modal */}
         {isConfirmModalOpen && (
           <ConfirmationModal
             isOpen={isConfirmModalOpen}

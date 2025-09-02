@@ -165,12 +165,13 @@ export const useUpdateStaff = () => {
   return { loading, error, updateStaff, reset };
 };
 
-// Hook for deleting staff member
 export const useDeleteStaff = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const deleteStaff = useCallback(async (id) => {
+    if (!id) return { success: false, message: 'Invalid staff ID' };
+
     setLoading(true);
     setError(null);
 
@@ -179,19 +180,19 @@ export const useDeleteStaff = () => {
       const responseData = response.data;
 
       if (responseData.success) {
+        toast.success(responseData.message || 'Staff deleted successfully');
         return { success: true, message: responseData.message };
       } else {
-        setError({ message: responseData.message || 'Failed to delete staff member' });
-        toast.error(responseData.message || 'Failed to delete staff member');
-        return { success: false };
+        const errMsg = responseData.message || 'Failed to delete staff member';
+        setError({ message: errMsg });
+        toast.error(errMsg);
+        return { success: false, message: errMsg };
       }
     } catch (err) {
-      setError({
-        message: 'Failed to delete staff member',
-        details: err.response?.data?.message || err.message,
-      });
-      toast.error(err.response?.data?.message || err.message || 'Failed to delete staff member');
-      return { success: false };
+      const errMsg = err.response?.data?.message || err.message || 'Failed to delete staff member';
+      setError({ message: errMsg });
+      toast.error(errMsg);
+      return { success: false, message: errMsg };
     } finally {
       setLoading(false);
     }

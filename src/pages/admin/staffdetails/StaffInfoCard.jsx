@@ -19,8 +19,16 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditWage, setShowEditWage] = useState(false);
   const [showIncrementForm, setShowIncrementForm] = useState(false);
+  
+  const getCurrentWage = () => {
+    return salaryDetails?.dailyWage || 
+           salaryDetails?.currentDailyWage || 
+           staffData.dailyWage || 
+           '';
+  };
+  
   const [wageForm, setWageForm] = useState({
-    previousWage: salaryDetails?.dailyWage || staffData.dailyWage || '',
+    previousWage: getCurrentWage(),
     newWage: '',
     incrementAmount: '',
     effectiveDate: '',
@@ -39,11 +47,13 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
     setShowDeleteConfirm(true);
   };
 
-  const confirmDelete = (e) => {
-    e.stopPropagation();
-    onDelete(staffData.id);
-    setShowDeleteConfirm(false);
-  };
+ const confirmDelete = (e) => {
+  e.stopPropagation();
+- onDelete(staffData.id);
++ onDelete(staffData._id || staffData.id);
+  setShowDeleteConfirm(false);
+};
+
 
   const cancelDelete = (e) => {
     e.stopPropagation();
@@ -66,6 +76,13 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
 
   const handleWageFormSubmit = (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!wageForm.newWage || !wageForm.effectiveDate || !wageForm.reason) {
+      alert('Please fill all required fields');
+      return;
+    }
+    
     if (onEditWage) {
       onEditWage({ ...wageForm, staffId: staffData.id });
     }
@@ -104,11 +121,11 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
 
           <div className="flex-1 mt-4 sm:mt-0">
             <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
-                  {staffData.name}
-                </h2>
+              {staffData.name}
+            </h2>
             <p className="text-sm sm:text-base text-gray-600 truncate mb-2">
-                  {staffData.role}
-                </p>
+              {staffData.role}
+            </p>
 
             <div className="flex flex-wrap gap-2">
               <ActionButton onClick={handleEditClick} icon={<MdEdit />} label="Edit" color="blue" />
@@ -145,17 +162,17 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-gray-500" />} label="Daily Wage" value={`₹${salaryDetails.currentDailyWage}`} />
+                <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-gray-500" />} label="Daily Wage" value={`₹${salaryDetails.currentDailyWage || 'N/A'}`} />
                 {salaryDetails.wagePerDay && (
                   <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-gray-500" />} label="Wage Per Day" value={`₹${salaryDetails.wagePerDay}`} />
                 )}
-                <DetailItem icon={<MdCalendarToday className="w-5 h-5 text-gray-500" />} label="Days in Month" value={salaryDetails.daysInMonth} />
-                <DetailItem icon={<MdCalendarToday className="w-5 h-5 text-gray-500" />} label="Days Worked" value={salaryDetails.daysWorked} />
-                <DetailItem icon={<MdCalendarToday className="w-5 h-5 text-gray-500" />} label="Leave Days" value={salaryDetails.leaveDays} />
-                <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-gray-500" />} label="Advance Paid" value={`₹${salaryDetails.advancePaid}`} />
-                <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-gray-500" />} label="Monthly Salary" value={`₹${salaryDetails.monthlySalary}`} />
+                <DetailItem icon={<MdCalendarToday className="w-5 h-5 text-gray-500" />} label="Days in Month" value={salaryDetails.daysInMonth || 'N/A'} />
+                <DetailItem icon={<MdCalendarToday className="w-5 h-5 text-gray-500" />} label="Days Worked" value={salaryDetails.daysWorked || 'N/A'} />
+                <DetailItem icon={<MdCalendarToday className="w-5 h-5 text-gray-500" />} label="Leave Days" value={salaryDetails.leaveDays || 'N/A'} />
+                <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-gray-500" />} label="Advance Paid" value={`₹${salaryDetails.advancePaid || '0'}`} />
+                <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-gray-500" />} label="Monthly Salary" value={`₹${salaryDetails.monthlySalary || 'N/A'}`} />
                 <div className="sm:col-span-2 md:col-span-3">
-                  <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-green-600" />} label="Final Salary" value={`₹${salaryDetails.finalSalary}`} highlight />
+                  <DetailItem icon={<MdAttachMoney className="w-5 h-5 text-green-600" />} label="Final Salary" value={`₹${salaryDetails.finalSalary || 'N/A'}`} highlight />
                 </div>
               </div>
             </div>
@@ -165,9 +182,9 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
 
       {/* Edit Wage Modal */}
       {showEditWage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center px-4 z-50">
           <form
-            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mt-10 mb-10"
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md max-h-screen overflow-y-auto"
             onClick={e => e.stopPropagation()}
             onSubmit={handleWageFormSubmit}
           >
@@ -212,8 +229,8 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
       {/* Wage Increment Form */}
       {showIncrementForm && (
         <AddWageIncrementForm
-          staffId={staffData.staff ? staffData.staff._id : staffData._id}
-          currentWage={salaryDetails?.dailyWage || staffData.dailyWage}
+          staffId={staffData.staff ? staffData.staff._id : staffData._id || staffData.id}
+          currentWage={getCurrentWage()}
           onClose={handleCloseIncrementForm}
           onSubmit={() => setShowIncrementForm(false)}
           loading={false}
@@ -223,7 +240,7 @@ const StaffInfoCard = ({ staffData, salaryDetails, onEdit, onDelete, onEditWage 
   );
 };
 
-// Reusable Components
+// Reusable Components (keep these the same)
 const ActionButton = ({ onClick, icon, label, color }) => {
   const base = {
     blue: 'bg-blue-100 text-blue-800 hover:bg-blue-200',

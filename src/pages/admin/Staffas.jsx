@@ -84,26 +84,9 @@ const StaffManagement = () => {
     }
   };
 
-  const handleDeleteStaff = async (staffId) => {
-    if (window.confirm('Are you sure you want to delete this staff member? This will also delete all related records.')) {
-      try {
-        const result = await deleteStaff(staffId);
-        if (result.success) {
-          // Refresh the staff list
-          getAllStaff();
-          // Navigate back to list if we're viewing the deleted staff member
-          if (selectedStaff && selectedStaff._id === staffId) {
-            handleBackToList();
-          }
-          console.log('Staff member deleted successfully!');
-        }
-      } catch (error) {
-        console.error('Error deleting staff:', error);
-      }
-    }
-  };
 
-  // Loading state
+
+
   if (loading && !staff.length) {
     return (
       <div>
